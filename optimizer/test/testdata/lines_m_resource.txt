@@ -1,0 +1,4 @@
+3	7	19106	10	10	100	1	2	0	1	KUNSTST_M1	0	2	,1	0	0	0
+2	311	DEF_ERPCommandcreate_M_Ressource__
+3	1	250-MASCH	250		100	1	2	0	1	250-00	0	2	0	0	0
+2	311	DEF_ERPCommandcreate_M_Ressource__

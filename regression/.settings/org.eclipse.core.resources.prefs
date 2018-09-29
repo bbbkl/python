@@ -1,0 +1,13 @@
+eclipse.preferences.version=1
+encoding/RegressionConfig.py=ISO-8859-1
+encoding/RegressionCsvfile.py=ISO-8859-1
+encoding/RegressionException.py=ISO-8859-1
+encoding/RegressionLogfile.py=ISO-8859-1
+encoding/RegressionMessagefile.py=ISO-8859-1
+encoding/create_reference_dir.py=ISO-8859-1
+encoding/delete_unused_regression_files.py=ISO-8859-1
+encoding/flat_stat.py=ISO-8859-1
+encoding/p4_compare.py=ISO-8859-1
+encoding/regression.py=ISO-8859-1
+encoding/repair_logfilenames.py=ISO-8859-1
+encoding/stat_to_csv.py=ISO-8859-1

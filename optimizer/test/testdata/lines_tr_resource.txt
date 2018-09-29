@@ -1,0 +1,4 @@
+3	CDD	CDD-80211990	98	10	0	7	11101	4779	1	0	1		0
+2	350	DEF_ERPCommandcreate_Resource_____
+3	7	M000	820	IMPORT	0	1	2	0	0		0		0	0	0
+2	311	DEF_ERPCommandcreate_M_Ressource__

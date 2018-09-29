@@ -1,0 +1,109 @@
+Index: message/baseitem.py
+===================================================================
+--- message/baseitem.py	(revision 43)
++++ message/baseitem.py	(working copy)
+@@ -2,6 +2,7 @@
+ # file: BaseItem.py
+ #
+ # description
++from mailbox import fcntl
+ """\n\n
+     Base class for activity, ...
+ """
+@@ -58,18 +59,28 @@
+         return self.__class__.__name__
+     
+     @classmethod 
+-    def format_output(cls, descriptions, tokens):
++    def format_output(cls, descriptions, tokens, with_index_numbers):
+         """pretty print description line"""
+         line = ""
+         cnt = len(tokens)
++        if with_index_numbers and len(descriptions) < cnt:
++            diff = cnt - len(descriptions)
++            for i in range(diff):
++                descriptions.append("xxx_missing_description")
+         if cnt < 4:
+             for i in range(cnt):
+                 line += "\t%s: %s" % (descriptions[i], tokens[i])
+             return line
+-        max_len = max(map(len, descriptions))
+-        fmt = "\n\t%%-%ds %%s" % max_len
+-        for i in range(cnt):
+-            line += fmt % (descriptions[i], tokens[i])
++        if with_index_numbers:
++            max_len = max(map(len, descriptions)) + 3
++            fmt = "\n\t%%2d %%-%ds %%s" % max_len
++            for i in range(cnt):
++                line += fmt % (i, descriptions[i], tokens[i])
++        else:
++            max_len = max(map(len, descriptions))
++            fmt = "\n\t%%-%ds %%s" % max_len
++            for i in range(cnt):
++                line += fmt % (descriptions[i], tokens[i])
+         return line
+             
+     def verbose_tokens(self):
+@@ -108,16 +119,17 @@
+             return # we know about this mismatch already
+         cls.class_description_mismatches[classname] = diff
+         
+-        msg = "\nWarning - Description/Token mismatch for class: %s" % classname
++        msg = "\n%s - Description/Token mismatch for class: %s" % ("Warning" if diff>0 else "ERROR", classname)
+         msg += ", mode: %s\n" % ("5.1" if cls.mode51() else "5.2/5.3/6.1")
+         msg += "#description: %d, #tokens: %d\n" % (len(descriptions), len(tokens))
+-        msg += "ignored descriptions: %s" % descriptions[-diff:] 
++        if diff > 0:
++            msg += "ignored descriptions: %s" % descriptions[-diff:] 
+         print(msg)
+             
+-    def line_with_description(self):
++    def line_with_description(self, with_index_numbers):
+         """combine values with description"""
+         descriptions = self.token_descriptions()
+         self.check_descriptions_tokens_mismatch(descriptions, self._tokens)
+         tokens = self.verbose_tokens()
+-        line = '%s %s' % (self.headline(), self.format_output(descriptions, tokens))
++        line = '%s %s' % (self.headline(), self.format_output(descriptions, tokens, with_index_numbers))
+         return line
+Index: message_file_reader.py
+===================================================================
+--- message_file_reader.py	(revision 43)
++++ message_file_reader.py	(working copy)
+@@ -210,7 +210,7 @@
+             return line[2:-1].split('\t')
+     return []
+ 
+-def explain_message_file(filename, encoding_id):
++def explain_message_file(filename, with_index_numbers, encoding_id):
+     """open file, read each line and rewrite it to message file explained"""
+     result_file = get_output_file(filename, "explained")
+     output = open(result_file, "w", encoding=encoding_id)
+@@ -226,7 +226,7 @@
+                 new_item = create_object(data, command)
+                 if new_item is not None:
+                     try:
+-                        line_explained = new_item.line_with_description()
++                        line_explained = new_item.line_with_description(with_index_numbers)
+                         output.write(line_explained + '\n')
+                     except:
+                         output.write(data_line)
+@@ -471,6 +471,9 @@
+     parser.add_argument('--unfix', action="store_true", # or stare_false
+                       dest="remove_fixations", default=False, # negative store value
+                       help="remove all fixations. generate <message_file>_unfix.dat") 
++    parser.add_argument('-n', '--with_index_numbers', action="store_true", # or stare_false
++                      dest="with_index_numbers", default=False, # negative store value
++                      help="at index position to each explained field") 
+     return parser.parse_args()
+         
+ def main():
+@@ -487,7 +490,7 @@
+         return 0
+     
+     if args.explain == True:
+-        explain_message_file(args.message_file, encoding)
++        explain_message_file(args.message_file, args.with_index_numbers, encoding)
+         return 0
+     
+     if args.regex_filter != '':

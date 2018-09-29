@@ -1,0 +1,2 @@
+3	00003923	00301-641	20.01.2012
+2	341	DEF_ERPCommandcreate_MC_Charge____

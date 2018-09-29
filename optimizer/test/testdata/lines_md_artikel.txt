@@ -1,0 +1,2 @@
+3	6000301	0	1	50	0	12	4	100	4	100	0	
+2	335	DEF_ERPCommandcreate_MD_Artikel___

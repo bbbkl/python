@@ -1,0 +1,5 @@
+3	0013838		0	0	0	0
+2	325	DEF_ERPCommandcreate_S_Artikel____
+
+3	42416104		0	0	-1	80	3
+2	325	DEF_ERPCommandcreate_S_Artikel____

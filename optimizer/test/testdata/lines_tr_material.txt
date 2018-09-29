@@ -1,0 +1,2 @@
+3	PPA	LA-00000006	6	10	10	0013838		30	37	0		PPA	6|8		30	0
+2	355	DEF_ERPCommandcreate_Material_____

@@ -1,0 +1,2 @@
+3	0	10	13.06.2012	08:00	16:00	1	0
+2	307	DEF_ERPCommandcreate_M_KalZeit____

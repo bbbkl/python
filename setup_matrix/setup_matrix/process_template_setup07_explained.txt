@@ -1,0 +1,226 @@
+TrProcess	SETUP03 15345 5000620 
+	process_area_head         PPA
+	process                   SETUP03
+	part_process              15345
+	part                      5000620
+	part_variant              
+	cro                       
+	production_quantity       1
+	start_date                21.02.2018
+	due_date                  21.02.2018
+	throughput_time_factor    ,1
+	priority                  ,1
+	earlyness_factor          ,1
+	transport_%               100
+	matrix_%                  100
+	waiting_time_%            100
+	mrp_area                  0
+	is_head                   1
+	free_quantity             1
+	last_opt_type             0 (Standard)
+	last_opt_target           0 (due_date)
+	last_opt_time             21.02.2018
+	lot                       
+	use_due_date              1
+	production_quantity_total 1
+	BG_ueber_Lager            0
+	process_area_orig         PPA
+	order_state               E
+	creation_date             21.02.2018
+	stability                 0
+TrResource	SETUP03 15345 22171 RU1 
+	process_area  PPA
+	process       SETUP03
+	part_process  15345
+	act_pos       10
+	res_pos       0
+	res_kind      2 (Mensch)
+	res           RU1
+	ident_act     22171
+	intensity     1
+	alt_group     0
+	base_res      1
+	selected_res  
+	overload_used 0
+TrActivity	SETUP03 15345 10 22171 0 
+	process_area_head        PPA
+	process                  SETUP03
+	part_process             15345
+	act_pos                  10
+	Akt_Art                  0 (Produktion)
+	ident_act                22171
+	Zeitwahl                 1
+	Zeit                     0
+	Zeit_einheit             1 (Minuten)
+	TR                       0
+	TE                       60
+	TR_timeunit              1 (Minuten)
+	TE_timeunit              1 (Minuten)
+	Zeitmengen_Einheit       1
+	start_date               26.02.2018
+	end_date                 26.02.2018
+	Fixiert                  0
+	condition_date           21.02.2018
+	condition_type           0 (Ohne)
+	mat_reservation_date     21.02.2018
+	start_time               37800
+	end_time                 41400
+	Unterbrechbar            0
+	#Unterbrechungen         1
+	Zeitraum                 0
+	Zeitraum_einheit         1 (Minuten)
+	Min_Zwischenzeit         0
+	Min_Zwischenzeit_Einheit 1 (Minuten)
+	Fertigungstyp            1 (MB)
+	Fertig_gemeldet          0
+	cal                      100
+	activity_class           
+	partial_lot              0
+	total_lot_size           1
+	TR_total                 0
+	TE_total                 60
+	continous_production     0
+	continous_demand         0
+	PBO                      PPA
+TrResource	SETUP03 15345 22172 RM1 
+	process_area  PPA
+	process       SETUP03
+	part_process  15345
+	act_pos       20
+	res_pos       0
+	res_kind      2 (Mensch)
+	res           RM1
+	ident_act     22172
+	intensity     1
+	alt_group     0
+	base_res      1
+	selected_res  
+	overload_used 0
+TrActivity	SETUP03 15345 20 22172 0 
+	process_area_head        PPA
+	process                  SETUP03
+	part_process             15345
+	act_pos                  20
+	Akt_Art                  0 (Produktion)
+	ident_act                22172
+	Zeitwahl                 1
+	Zeit                     0
+	Zeit_einheit             1 (Minuten)
+	TR                       0
+	TE                       60
+	TR_timeunit              1 (Minuten)
+	TE_timeunit              1 (Minuten)
+	Zeitmengen_Einheit       1
+	start_date               26.02.2018
+	end_date                 26.02.2018
+	Fixiert                  0
+	condition_date           21.02.2018
+	condition_type           0 (Ohne)
+	mat_reservation_date     21.02.2018
+	start_time               41400
+	end_time                 45000
+	Unterbrechbar            0
+	#Unterbrechungen         1
+	Zeitraum                 0
+	Zeitraum_einheit         1 (Minuten)
+	Min_Zwischenzeit         0
+	Min_Zwischenzeit_Einheit 1 (Minuten)
+	Fertigungstyp            1 (MB)
+	Fertig_gemeldet          0
+	cal                      100
+	activity_class           
+	partial_lot              0
+	total_lot_size           1
+	TR_total                 0
+	TE_total                 60
+	continous_production     0
+	continous_demand         0
+	PBO                      PPA
+TrConstraint	SETUP03 15345 22171 AOB_EAFIX 15345 22172 
+	process_area_from   PPA
+	process             SETUP03
+	part_process_from   15345
+	ident_act_from      22171
+	part_process_to     15345
+	ident_act_to        22172
+	transport_time      0
+	transport_time_unit 1 (Minuten)
+	AOB                 6 (EAFIX)
+	Teillos             0
+	Zeitwahl            UEBERMATRIX
+	Menge_Teillos       1
+	Je_Menge_Teillos    1
+	process_are_to      PPA
+	buffer_time         0
+	buffer_time_unit    2 (Stunden)
+TrResource	SETUP03 15345 22173 RU2 
+	process_area  PPA
+	process       SETUP03
+	part_process  15345
+	act_pos       30
+	res_pos       0
+	res_kind      2 (Mensch)
+	res           RU2
+	ident_act     22173
+	intensity     1
+	alt_group     0
+	base_res      1
+	selected_res  
+	overload_used 0
+TrActivity	SETUP03 15345 30 22173 0 
+	process_area_head        PPA
+	process                  SETUP03
+	part_process             15345
+	act_pos                  30
+	Akt_Art                  0 (Produktion)
+	ident_act                22173
+	Zeitwahl                 1
+	Zeit                     0
+	Zeit_einheit             1 (Minuten)
+	TR                       0
+	TE                       60
+	TR_timeunit              1 (Minuten)
+	TE_timeunit              1 (Minuten)
+	Zeitmengen_Einheit       1
+	start_date               26.02.2018
+	end_date                 26.02.2018
+	Fixiert                  0
+	condition_date           21.02.2018
+	condition_type           0 (Ohne)
+	mat_reservation_date     21.02.2018
+	start_time               45000
+	end_time                 48600
+	Unterbrechbar            0
+	#Unterbrechungen         1
+	Zeitraum                 0
+	Zeitraum_einheit         1 (Minuten)
+	Min_Zwischenzeit         0
+	Min_Zwischenzeit_Einheit 1 (Minuten)
+	Fertigungstyp            1 (MB)
+	Fertig_gemeldet          0
+	cal                      100
+	activity_class           
+	partial_lot              0
+	total_lot_size           1
+	TR_total                 0
+	TE_total                 60
+	continous_production     0
+	continous_demand         0
+	PBO                      PPA
+TrConstraint	SETUP03 15345 22172 AOB_EAFIX 15345 22173 
+	process_area_from   PPA
+	process             SETUP03
+	part_process_from   15345
+	ident_act_from      22172
+	part_process_to     15345
+	ident_act_to        22173
+	transport_time      0
+	transport_time_unit 1 (Minuten)
+	AOB                 6 (EAFIX)
+	Teillos             0
+	Zeitwahl            UEBERMATRIX
+	Menge_Teillos       1
+	Je_Menge_Teillos    1
+	process_are_to      PPA
+	buffer_time         0
+	buffer_time_unit    2 (Stunden)

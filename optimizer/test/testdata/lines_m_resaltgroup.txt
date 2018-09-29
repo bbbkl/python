@@ -1,0 +1,4 @@
+3	7	10
+2	313	DEF_ERPCommandcreate_M_RessAltGr__
+3	1	200
+2	313	DEF_ERPCommandcreate_M_RessAltGr__

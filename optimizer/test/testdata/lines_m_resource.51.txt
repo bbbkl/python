@@ -1,0 +1,2 @@
+3	4	2511	3_LFO		100	1	2	0	0		0	2	0
+2	311	DEF_ERPCommandcreate_M_Ressource__

@@ -1,0 +1,2 @@
+3	0013838		05.05.2012	0	50	0	MDD	27	00:00	0	0		0
+2	301	DEF_ERPCommandcreate_M_DispoBew___

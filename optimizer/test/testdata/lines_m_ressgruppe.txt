@@ -1,0 +1,10 @@
+3	100	10776
+2	314	DEF_ERPCommandcreate_M_RessGruppe_
+3	1000	4058
+2	314	DEF_ERPCommandcreate_M_RessGruppe_
+3	1100	10776
+2	314	DEF_ERPCommandcreate_M_RessGruppe_
+3	200	10776
+2	314	DEF_ERPCommandcreate_M_RessGruppe_
+3	300	10776
+2	314	DEF_ERPCommandcreate_M_RessGruppe_
