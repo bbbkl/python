@@ -247,4 +247,5 @@ class TrActivity(BaseItem):
                 'Zeitraum', 'Zeitraum_einheit', 'Min_Zwischenzeit', 'Min_Zwischenzeit_Einheit',
                 'Fertigungstyp', 'Fertig_gemeldet', 'cal', 'activity_class', 'partial_lot',
                 'total_lot_size', 'TR_total', 'TE_total', 'continous_production',
-                'continous_demand', 'PBO', 'Pufferaktivität']
+                'continous_demand', 'PBO', 'Pufferaktivität', 
+                'default_setuptime', 'actual_setuptime']

@@ -31,6 +31,7 @@ from message.tr_process import TrProcess, ProcessProd
 from message.tr_material import TrMaterial
 from message.tr_constraint import TrConstraint
 from message.tr_processcst import TrProcessCst
+from message.tr_timeconst import TrTimeConst
 from message.mc_lager import McLager
 from message.mc_charge import McCharge
 from message.mc_art import McArt
@@ -174,10 +175,10 @@ def strip_message_file(filename, process_ids, regex_filter, describe_cmd, invers
         elif line_type == ID_DATA:
             data = tokens
             data_line = line
-        elif line_type == ID_COUNTER:
+        elif line_type == ID_COUNTER or line_type == ID_DATA1:
             pass # strip counter stuff
         else:
-            raise MessageFileException("unknown type (not in [234] in message file line")
+            raise MessageFileException("unknown type (not in [1234] in message file line")
     output.close()
     add_counter(result_file, encoding_id)
 
@@ -256,7 +257,7 @@ def explain_message_file(filename, with_index_numbers, encoding_id):
                 output.write(line)
                 #items.append(Counter(tokens))
             else:
-                raise MessageFileException("unknown type (not in [234] in message file line")
+                raise MessageFileException("unknown type (not in [1234] in message file line")
     except:
         print("Failed in line=%d" % line_cnt)
         raise
@@ -326,11 +327,11 @@ def read_message_file(filename, encoding_id):
                 #items.append(command)
         elif line_type == ID_DATA:
             data = tokens
-        elif line_type == ID_COUNTER:
+        elif line_type == ID_COUNTER or line_type == ID_DATA1:
             pass
             #items.append(Counter(tokens))
         else:
-            raise MessageFileException("unknown type (not in [234] in message file line")
+            raise MessageFileException("unknown type (not in [1234] in message file line")
     return items
     
 id_to_class_mapping = None
@@ -346,7 +347,8 @@ def get_id_to_class_mapping():
                    M_KalDatum, UpdateCalendar,
                    TrResource, M_Resource, M_ResAlt, M_ResAltGroup, UpdateResource, 
                    TrProcess, ProcessProd,
-                   TrMaterial, TrConstraint, TrProcessCst, McLager, McCharge, McArt, MRessGruppe, 
+                   TrMaterial, TrConstraint, TrProcessCst, McLager, McCharge, McArt, MRessGruppe,
+                   TrTimeConst, 
                    ML_ArtOrt, ML_ArtOrtVar, M_UebOrt, M_UebAdresse, CheckErpID, TrStock, TrStockFromMLArtOrtKomm,
                    ReasonMaterial, ReasonResource, ReasonResRes, ReasonTimebound, ReasonStructure, ReasonAdmin,
                    APSCommandackSolutionCtpProd, JobContext, JobContextCtp, JobContextCtpProd,

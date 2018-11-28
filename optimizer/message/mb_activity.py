@@ -50,7 +50,7 @@ class MbActivity(BaseItem):
                 'part_process', 'MinDLZ',
                 'is_on_critical_path', 'process_area', 'process', 'can_be_fixed',
                 'start_date_ideal', 'start_time_ideal', 'end_date_ideal', 'end_time_ideal',
-                'implicitly_fixed', 'optimization_type']
+                'implicitly_fixed', 'optimization_type', 'setup_time_pct']
 
 
 class ActDispatch(BaseItem):
