@@ -50,6 +50,37 @@ class Regression:
             report += "\n" + item.create_report() + "\n"
         return report
     
+    def get_regression_timepoint(self):
+        """regression date is creation time of reference directory"""
+        timepoint = os.stat(self.regression_dir).st_ctime
+        dt = datetime.datetime.fromtimestamp(timepoint)
+        return dt.isoformat()
+    
+    def create_summary(self, duration):
+        """create summary = id + date + list of non-ok messagesfiles and their result"""
+        summary = "Regression ID=%s" % self.config.get_headline()
+        summary += " started=%s" % self.get_regression_timepoint()
+        summary += " elapsed_time=%s" % duration
+        summary += " result=%s" % self.get_result()
+        summary += "\n%s" % self.regression_dir 
+        
+        summary += "\nnumber of messagefiles=%d" % len(self.regression_messagefiles)
+        for item in self.get_items():
+            item_result = item.get_result()
+            if item_result != Regr.OK:
+                summary += "\n\t%s %s" % (item_result, item.get_messagefile())
+        summary += "\n\n"
+        return summary
+    
+    def prepend_to_report(self, message):
+        fn = self.get_report_file()
+        print(fn)
+        lines = open(fn).readlines()
+        with open(fn, "w") as stream:
+            stream.write("%s\n" % message)
+            for line in lines:
+                stream.write(line)
+    
     def get_result(self):
         result = Regr.OK
         for item in self.get_items():
@@ -153,8 +184,8 @@ class Regression:
         subject = "regression %s" % self.get_id()
         subject += " result=%s" % str(self.get_result())
         subject += " elapsed_time=%s" % duration
-        body = self.regression_dir 
-        body += "\n\n"
+        body = self.create_summary(duration)
+        self.prepend_to_report(body)
         body += self.create_report()
         send_regression_mail(subject, body, self.config.get_recipients())
 
@@ -201,7 +232,13 @@ def main():
 
     try:
         regression = Regression(args.config_file)
-        regression.do_regression()
+        #regression.do_regression()
+        
+        regression.regression_dir = r"D:\work\bega\20181127\bega_ref_20181127.01"
+        regression.set_messagefiles(regression.regression_dir)
+        summary = regression.create_summary("4711")
+        regression.prepend_to_report(summary)
+        print(regression.create_summary("4711"))
     except RegressionException as ex:
         print(ex)
         raise ex
