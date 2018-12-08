@@ -10,6 +10,7 @@ from argparse import ArgumentParser
 from RegressionLogfile import RegressionLogfile
 from RegressionCsvfile import RegressionCsvfile
 from RegressionException import RegressionException
+from RegressionResultCodes import Regr
 from glob import glob
 import os.path
 import re
@@ -45,7 +46,7 @@ class RegressionMessagefile:
     def create_report(self):
         """create report for mail"""
         report = os.path.basename(self.message_file)
-        report +=  " ok " if self.get_result() else " ***not ok*** "
+        report += ' ' + str(self.get_result()) + ' '
         report += self.logfile_pair.create_report()
         for item in self.get_items():
             if item.get_result() != 1:
@@ -62,10 +63,10 @@ class RegressionMessagefile:
         return result
     
     def get_result(self):
+        result = Regr.OK
         for item in self.get_items():
-            if item.get_result() == 0:
-                return 0
-        return 1
+            result = max(result, item.get_result())
+        return result
     
     def get_messagefile(self):
         return self.message_file

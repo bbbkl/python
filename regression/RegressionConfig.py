@@ -8,6 +8,7 @@
 
 from argparse import ArgumentParser
 import re
+import os.path
 
 VERSION = '1.0'
 
@@ -24,7 +25,9 @@ class RegressionConfig:
                    'src_exe' : 'src_exe=',
                    'regression_exe' : 'regression_exe=',
                    'reference_dir' : 'reference_dir=',
-                   'params' : 'params=' }
+                   'params' : 'params=',
+                   'masterconfig' : 'masterconfig=',
+                   'headline' : 'headline=' }
         
         for line in open(self.configuration_file):
             for key in key_map:
@@ -38,15 +41,16 @@ class RegressionConfig:
                     self.token_map[key] = val
                     break
         
+        # non available config keys -> None
         for key in key_map:
-            self.token_map[key] = 'MISSING'
+            self.token_map[key] = None
 
     def expand_variables(self):
         for key in self.token_map:
             ref_key = '%' + key + '%'
             for item in self.token_map:
                 val = self.token_map[item]
-                if val.find(ref_key) != -1:
+                if val and val.find(ref_key) != -1:
                     self.token_map[item] = val.replace(ref_key, self.token_map[key])
 
     def get_val(self, key):
@@ -63,6 +67,19 @@ class RegressionConfig:
         return self.get_val('regression_exe')
     def get_params(self):
         return self.get_val('params')
+    def get_masterconfig(self):
+        return self.get_val('masterconfig')
+    def get_headline(self):
+        headline = self.get_val('headline')
+        if headline is None:
+            headline = os.path.basename(self.configuration_file)
+        return headline
+    
+    def add_param(self, val):
+        if self.token_map['params'] is None:
+            self.token_map['params'] = val
+        else:
+            self.token_map['params'] += ' ' + val
 
     def __str__(self):
         msg = "RegressionConifg '%s'" % self.configuration_file
@@ -84,6 +101,7 @@ def main():
     args = parse_arguments()
 
     config = RegressionConfig(args.config_file)
+    #config.add_param('-mcf %s' % config.get_masterconfig())
     print(config)
         
 if __name__ == "__main__":

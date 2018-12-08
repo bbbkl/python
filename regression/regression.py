@@ -18,20 +18,25 @@ from subprocess import run
 from RegressionConfig import RegressionConfig
 from RegressionMessagefile import RegressionMessagefile
 from RegressionException import RegressionException
+from RegressionResultCodes import Regr
 
 VERSION = '1.0'
 
 class Regression:
     """main regression class, which perforce a regression"""
-    def __init__(self, regression_id, configuration_file):
-        self.regression_id = regression_id
+    develop = False
+    
+    def __init__(self, configuration_file):
         self.config = RegressionConfig(configuration_file)
         self.regression_dir = None
         self.regression_messagefiles = []
         
     def get_id(self):
-        return self.regression_id
+        return self.config.get_headline()
     
+    def get_items(self):
+        return self.regression_messagefiles
+        
     def get_report_file(self):
         return os.path.join(self.regression_dir, "regression_report.txt")
     
@@ -46,22 +51,41 @@ class Regression:
         return report
     
     def get_result(self):
-        for item in self.regression_messagefiles:
-            if item.get_result() == 0:
-                return 0
-        return 1
+        result = Regr.OK
+        for item in self.get_items():
+            result = max(result, item.get_result())
+        return result
     
     def copy_regression_exe(self):
-        if os.path.exists(self.config.get_src_exe()):
-            shutil.copyfile(self.config.get_src_exe(), self.config.get_regression_exe())
-
+        src = self.config.get_src_exe()
+        dst = self.config.get_regression_exe()
+        if src and os.path.exists(src):
+            shutil.copyfile(src, dst)
+        if not os.path.exists(dst):
+            if src and not os.path.exists(src):
+                raise RegressionException("no src executable '%s'" % src)
+            raise RegressionException("no regression executable '%s'" % dst)
+        
     def do_regression(self):
-        self.copy_regression_exe()
-        config = self.config
-        self.regression_dir = self.create_regression_dir(config.get_reference_dir())
-        self.set_messagefiles(self.regression_dir)
-        duration = self.call_optimizer(config.get_regression_exe(), config.get_params(), self.regression_messagefiles)
-        self.check_and_publish_regression_result(duration)
+        try:
+            self.copy_regression_exe()
+            config = self.config
+            if Regression.develop:
+                self.regression_dir = self.create_regression_dir(config.get_reference_dir())
+                self.try_copy_masterconfig(config, self.regression_dir)
+                self.set_messagefiles(self.regression_dir)
+                duration = datetime.datetime.now() - datetime.datetime.now()
+            else:
+                self.regression_dir = self.create_regression_dir(config.get_reference_dir())
+                self.try_copy_masterconfig(config, self.regression_dir)
+                self.set_messagefiles(self.regression_dir)
+                duration = self.call_optimizer(config.get_regression_exe(), config.get_params(), self.regression_messagefiles)
+            self.check_and_publish_regression_result(duration)
+        except RegressionException as ex:
+            print(ex)
+            subject = "regression %s result=FATAL_FAIL" % self.get_id()
+            send_regression_mail(subject, str(ex), self.config.get_recipients())
+            
 
     def set_messagefiles(self, regression_dir):
         """for each *.dat file within regression dir create one RegressionMessageFile"""
@@ -83,6 +107,14 @@ class Regression:
                 dst = os.path.join(dst_root, item)
                 os.symlink(src, dst)
         return regression_dir
+    
+    def try_copy_masterconfig(self, config, reference_dir):
+        src = config.get_masterconfig()
+        if src:
+            dst = os.path.join(reference_dir, os.path.basename(src))
+            if src != dst:
+                shutil.copyfile(src, dst)
+            config.add_param('-mcf %s' % dst)
 
     def get_new_regression_dir(self, reference_dir):
         """get new directory name with refernce_dir as prefix, add unique suffix"""
@@ -118,9 +150,9 @@ class Regression:
 
     def check_and_publish_regression_result(self, duration):
         """check combined result of all message files, create regression report, mail it"""
-        subject = "regression %s: " % self.get_id()
-        subject += "ok" if self.get_result() == 1 else "failed"
-        subject += "   elapsed_time %s" % duration
+        subject = "regression %s" % self.get_id()
+        subject += " result=%s" % str(self.get_result())
+        subject += " elapsed_time=%s" % duration
         body = self.regression_dir 
         body += "\n\n"
         body += self.create_report()
@@ -140,34 +172,35 @@ def send_regression_mail(subject, text, recipients):
     msg['Subject'] = subject
     msg.attach(MIMEText(body, 'plain'))
     text=msg.as_string()
+    if Regression.develop:
+        print("mail from=%s" % msg['From'])
+        print("mail to=%s" % msg['To'])
+        print("subject=%s" % msg['Subject'])
+        print("body=%s" % body)
+        return
     s = smtplib.SMTP('10.1.0.62')
     s.sendmail(sender,address_book, text)
     s.quit()
+        
 
 def parse_arguments():
     """parse commandline arguments"""
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
-    parser.add_argument('regression_id', metavar='regression_id', help='regression id')
     parser.add_argument('config_file', metavar='config_file', help='input regression configuration file')
-    """
-    parser.add_argument('--regression_dir', metavar='regression_dir',
-                        dest="regression_dir", default='', 
-                        help="full path of regression dir")
-    parser.add_argument('--regression_dir', metavar='regression_dir',
-                        dest="regression_dir", default='', 
-                        help="full path of regression dir")
-    parser.add_argument('--recipients', metavar='recipients', dest='recipients', default='',
-                        help="comma separated list of email recipients")
-                        """
+    parser.add_argument('-d', '--develop', action="store_true", # or stare_false
+                      dest="develop", default=False, # negative store value
+                      help="develop modus, no real mail")
     return parser.parse_args()
 
 def main():
     """main function"""
     args = parse_arguments()
 
+    Regression.develop = args.develop
+
     try:
-        regression = Regression(args.regression_id, args.config_file)
+        regression = Regression(args.config_file)
         regression.do_regression()
     except RegressionException as ex:
         print(ex)

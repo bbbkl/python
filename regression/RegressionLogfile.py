@@ -9,6 +9,8 @@
 from argparse import ArgumentParser
 from datetime import datetime
 import re
+import os
+from RegressionResultCodes import Regr
 
 VERSION = '1.0'
 
@@ -25,7 +27,7 @@ def pretty_format_secs(seconds):
     return "%02d:%02d:%02d" % (hours, minutes, secs)
 
 class RegressionLogfile:
-    """regression logfile pair based on a message file"""
+    """regression logfile pair based on a message file initialized with reference.log."""
     def __init__(self, reference_file):
         self.reference_file = reference_file
     
@@ -52,19 +54,20 @@ class RegressionLogfile:
         return report
     
     def get_config_diff(self):
-        ref = self.get_active_conifg(self.get_reference_file())
-        res = self.get_active_conifg(self.get_result_file())
         diff = ""
-        for key in ref:
-            if not key in res:
-                diff += "\n\t%s reference=%s, result=default" % (key, ref[key])
-            elif ref[key] != res[key]:
-                diff += "\n\t%s reference=%s result=%s" % (key, ref[key], res[key])
-        for key in res:
-            if not key in ref:
-                diff += "\n\t%s reference=default, result=%s" % (key, res[key])
-        if diff:
-            diff = "\n\tconfiguration differs" + diff
+        if os.path.exists(self.get_reference_file()) and os.path.exists(self.get_result_file()):
+            ref = self.get_active_conifg(self.get_reference_file())
+            res = self.get_active_conifg(self.get_result_file())
+            for key in ref:
+                if not key in res:
+                    diff += "\n\t%s reference=%s, result=default" % (key, ref[key])
+                elif ref[key] != res[key]:
+                    diff += "\n\t%s reference=%s result=%s" % (key, ref[key], res[key])
+            for key in res:
+                if not key in ref:
+                    diff += "\n\t%s reference=default, result=%s" % (key, res[key])
+            if diff:
+                diff = "\n\tconfiguration differs" + diff
         return diff
     
     def get_reference_file(self):
@@ -75,27 +78,33 @@ class RegressionLogfile:
 
     def get_result(self):
         """dummy implementation so far"""
-        return 1
+        ref, res = self.get_reference_file(), self.get_result_file()
+        if self.get_errors(ref) or self.get_errors(res):
+            return Regr.FAILED
+        if len(self.get_warnings(ref)) < len(self.get_warnings(res)):
+            return Regr.DIFF
+        return Regr.OK
     
     def get_active_conifg(self, logfile):
         result = {} 
-        key_config_start = '- active configuration -'
-        rgx_config_entry = re.compile(r'\s+\([^)]+\)\s+(\S+)=(\S+)')
-        in_config = False
-        for line in open(logfile):
-            if in_config:
-                hit = rgx_config_entry.search(line)
-                in_config = hit is not None
+        if os.path.exists(logfile):
+            key_config_start = '- active configuration -'
+            rgx_config_entry = re.compile(r'\s+\([^)]+\)\s+(\S+)=(\S+)')
+            in_config = False
+            for line in open(logfile):
                 if in_config:
-                    result[hit.group(1)] = hit.group(2)
-                    continue
-                break
-            in_config = line.find(key_config_start) != -1
+                    hit = rgx_config_entry.search(line)
+                    in_config = hit is not None
+                    if in_config:
+                        result[hit.group(1)] = hit.group(2)
+                        continue
+                    break
+                in_config = line.find(key_config_start) != -1
         return result
     
     def get_errors(self, logfile):
         candidates = self.get_pattern('Error', logfile)
-        false_positives = ['SolThrowOnError=1', '?ERROR?']
+        false_positives = ["'solthrowonerror'", 'SolThrowOnError=1', '?ERROR?']
         return self.filter_false_positives(candidates, false_positives)
         
     def get_warnings(self, logfile):
@@ -119,7 +128,6 @@ class RegressionLogfile:
         result = []
         rgx_timestamp = re.compile('^[^|]*\|(.*)')
         for line in candidates:
-            print(line)
             hit = rgx_timestamp.search(line)
             if hit:
                 result.append(hit.group(1))
@@ -139,7 +147,7 @@ class RegressionLogfile:
     
     def get_total_seconds(self, logfile):
         """differnce last - first timestamp"""
-        if logfile is None:
+        if logfile is None or not os.path.exists(logfile):
             return -1
         rgx_time = re.compile('^(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\:\d{2}\:\d{2})')
         ts1 = ts2 = None
@@ -172,6 +180,7 @@ def main():
 
     item = RegressionLogfile(args.reference_file)
     print(item)
+    #print(item.get_result())
         
 if __name__ == "__main__":
     try:

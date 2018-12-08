@@ -10,6 +10,7 @@ from argparse import ArgumentParser
 import os.path
 import re
 from glob import glob
+from RegressionResultCodes import Regr
 
 VERSION = '1.0'
 
@@ -62,19 +63,19 @@ class RegressionCsvfile:
         res = self.get_result_file()
         if res is None:
             if self.is_activity():
-                return 1 # activity csv file is not mandatory
-            return 0
+                return Regr.OK # activity csv file is not mandatory
+            return Regr.FAILED
         return self.compare(self.get_reference_file(), res)
     
     def compare(self, ref, res):
         ref_lines = [x.rstrip() for x in open(ref).readlines() if x.rstrip()]
         res_lines = [x.rstrip() for x in open(res).readlines() if x.rstrip()]
         if len(ref_lines) != len(res_lines):
-            return 0
+            return Regr.DIFF
         for line in ref_lines:
             if res_lines.count(line) == 0:
-                return 0
-        return 1
+                return Regr.DIFF
+        return Regr.OK
 
 def parse_arguments():
     """parse commandline arguments"""
