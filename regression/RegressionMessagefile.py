@@ -49,7 +49,7 @@ class RegressionMessagefile:
         report += ' ' + str(self.get_result()) + ' '
         report += self.logfile_pair.create_report()
         for item in self.get_items():
-            if item.get_result() != 1:
+            if item.get_result() != Regr.OK:
                 report += "\n\t%s" % item.get_reference_file()
                 report += "\n\t%s" % item.get_result_file()
         return report
@@ -130,7 +130,7 @@ def main():
 
     regression_item = RegressionMessagefile(args.message_file)
     #regression_item.rename_result_logfile()
-    print(regression_item)
+    print(regression_item.create_report())
         
 if __name__ == "__main__":
     try:
