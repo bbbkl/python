@@ -12,6 +12,7 @@ from RegressionCsvfile import RegressionCsvfile
 from RegressionException import RegressionException
 from RegressionResultCodes import Regr
 from glob import glob
+import datetime
 import os.path
 import re
 import sys
@@ -20,9 +21,12 @@ VERSION = '1.0'
 
 class RegressionMessagefile:
     """regression configuration based on a configuration file"""
-    def __init__(self, message_file):
+    def __init__(self, message_file, expect_reference=True):
         self.message_file = message_file
-        self.logfile_pair = RegressionLogfile(self.get_reference_logfile(message_file))
+        if expect_reference:
+            self.logfile_pair = RegressionLogfile(self.get_reference_logfile(message_file))
+        else:
+            self.logfile_pair = None
         self.headproc_pair = None
         self.partproc_pair = None
         self.activitities_pair = None
@@ -53,6 +57,32 @@ class RegressionMessagefile:
                 report += "\n\t%s" % item.get_reference_file()
                 report += "\n\t%s" % item.get_result_file()
         return report
+      
+    def get_files_newer(self, timepoint):
+        candidates = glob(os.path.dirname(self.message_file) + "/*")
+        return [x for x in candidates if os.path.isfile(x) and os.stat(x).st_mtime >= timepoint]
+    
+    def get_basename(self):
+        return os.path.splitext(os.path.basename(self.message_file))[0]
+      
+    def rename_to_reference(self, src): 
+        """rename given src file as <prefix>reference.<extension>"""
+        src_name = os.path.basename(src)
+        pfx, ext = os.path.splitext(src_name)
+        if pfx.lower().find('schedinfo') != -1:
+            dst_name = self.get_basename() + '.' + pfx[1:] + '.reference' + ext
+        elif pfx.lower().find('result') != -1:
+            dst_name = src_name.replace('result', 'reference')
+        else:
+            dst_name = pfx + '.reference' + ext
+        dst = os.path.join(os.path.dirname(src), dst_name)
+        os.rename(src, dst)
+        
+    def rename_as_reference(self, timepoint):
+        """rename all files with creation_time >= timepoint to <prefix>.reference.<extension>"""
+        files_to_rename = self.get_files_newer(timepoint)
+        for item in files_to_rename:
+            self.rename_to_reference(item)
         
     def get_items(self):
         result = [self.logfile_pair,]

@@ -45,7 +45,7 @@ class Regression:
     
     def create_report(self):
         """create report for mail"""
-        report = "number of messagefiles=%d\n" % len(self.regression_messagefiles)
+        report = ""
         for item in self.regression_messagefiles:
             report += "\n" + item.create_report() + "\n"
         return report
@@ -74,7 +74,6 @@ class Regression:
     
     def prepend_to_report(self, message):
         fn = self.get_report_file()
-        print(fn)
         lines = open(fn).readlines()
         with open(fn, "w") as stream:
             stream.write("%s\n" % message)
@@ -118,12 +117,13 @@ class Regression:
             send_regression_mail(subject, str(ex), self.config.get_recipients())
             
 
-    def set_messagefiles(self, regression_dir):
+    def set_messagefiles(self, regression_dir, expect_reference=True):
         """for each *.dat file within regression dir create one RegressionMessageFile"""
+        self.regression_messagefiles = []
         for root, dirs, files in os.walk(regression_dir):
             for item in [x for x in files if os.path.splitext(x)[-1].lower() == '.dat']:
                 msg = os.path.join(root, item)
-                self.regression_messagefiles.append(RegressionMessagefile(msg))
+                self.regression_messagefiles.append(RegressionMessagefile(msg, expect_reference))
 
     def create_regression_dir(self, reference_dir):
         """for given reference dir, create regression dir with symlinks to save disk space"""
@@ -160,7 +160,18 @@ class Regression:
                 return dst
             idx += 1
 
-    def call_optimizer(self, exe, params, message_files):
+    def create_reference(self):
+        cfg = self.config
+        print(cfg.get_ref_exe())
+        self.regression_dir = cfg.get_reference_dir()
+        self.set_messagefiles(self.regression_dir, expect_reference=False)
+        for item in self.get_items():
+            timepoint_start = datetime.datetime.now().timestamp()
+            self.call_optimizer(cfg.get_ref_exe(), cfg.get_params(), 
+                                [item,], create_reference=True)
+            item.rename_as_reference(timepoint_start)
+
+    def call_optimizer(self, exe, params, message_files, create_reference=False):
         """call optimizer for each message file, return elapsed time"""
         duration = datetime.datetime.now() - datetime.datetime.now()
         for message_file in message_files:
@@ -168,15 +179,17 @@ class Regression:
             workdir = os.path.dirname(msgfile)
             cmd = '%s -offline %s -w %s -TestMessage %s' % (exe, params, workdir, msgfile)
             time_start = datetime.datetime.now()
-            with open(self.get_stdout_file(), "a") as outstream:
-                outstream.write("\n\n--- handline message %s ---\n\n" % message_file.get_messagefile())
+            if not create_reference:
+                with open(self.get_stdout_file(), "a") as outstream:
+                    outstream.write("\n\n--- handline message %s ---\n\n" % message_file.get_messagefile())
             with open(self.get_stdout_file(), "a") as outstream:
                 run(cmd, stdout=outstream, stderr=outstream)
             time_end = datetime.datetime.now()
             duration += time_end - time_start
-            message_file.rename_result_logfile()
-            with open(self.get_report_file(), "a") as report:
-                report.write("\n%s\n" % message_file.create_report())
+            if not create_reference:
+                message_file.rename_result_logfile()
+                with open(self.get_report_file(), "a") as report:
+                    report.write("\n%s\n" % message_file.create_report())
         return duration
 
     def check_and_publish_regression_result(self, duration):
@@ -222,6 +235,9 @@ def parse_arguments():
     parser.add_argument('-d', '--develop', action="store_true", # or stare_false
                       dest="develop", default=False, # negative store value
                       help="develop modus, no real mail")
+    parser.add_argument('-cr', '--create_reference', action="store_true", # or stare_false
+                      dest="create_reference", default=False, # negative store value
+                      help="develop modus, no real mail")
     return parser.parse_args()
 
 def main():
@@ -232,13 +248,18 @@ def main():
 
     try:
         regression = Regression(args.config_file)
-        #regression.do_regression()
+        if args.create_reference:
+            regression.create_reference()
+        regression.do_regression()
         
+        """
+        # develop
         regression.regression_dir = r"D:\work\bega\20181127\bega_ref_20181127.01"
         regression.set_messagefiles(regression.regression_dir)
         summary = regression.create_summary("4711")
         regression.prepend_to_report(summary)
         print(regression.create_summary("4711"))
+        """
     except RegressionException as ex:
         print(ex)
         raise ex

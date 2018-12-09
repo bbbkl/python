@@ -22,6 +22,7 @@ class RegressionConfig:
         
     def parse_config(self):
         key_map = { 'recipients' : 'recipients=',
+                   'ref_exe' : 'ref_exe=',
                    'src_exe' : 'src_exe=',
                    'regression_exe' : 'regression_exe=',
                    'reference_dir' : 'reference_dir=',
@@ -61,6 +62,8 @@ class RegressionConfig:
     def get_recipients(self):
         return self.get_val('recipients')
         return self.get_val('reference_dir')
+    def get_ref_exe(self):
+        return self.get_val('ref_exe')
     def get_src_exe(self):
         return self.get_val('src_exe')
     def get_regression_exe(self):
