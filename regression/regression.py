@@ -237,7 +237,7 @@ def parse_arguments():
                       help="develop modus, no real mail")
     parser.add_argument('-cr', '--create_reference', action="store_true", # or stare_false
                       dest="create_reference", default=False, # negative store value
-                      help="develop modus, no real mail")
+                      help="create reference dir before doing regression")
     return parser.parse_args()
 
 def main():
