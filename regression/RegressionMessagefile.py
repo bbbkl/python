@@ -69,7 +69,7 @@ class RegressionMessagefile:
         """rename given src file as <prefix>reference.<extension>"""
         src_name = os.path.basename(src)
         pfx, ext = os.path.splitext(src_name)
-        if pfx.lower().find('schedinfo') != -1:
+        if pfx.lower().find('_schedinfo') != -1:
             dst_name = self.get_basename() + '.' + pfx[1:] + '.reference' + ext
         elif pfx.lower().find('result') != -1:
             dst_name = src_name.replace('result', 'reference')
