@@ -14,7 +14,7 @@ from command_mapper import CommandMapper
 from message.baseitem import BaseItem
 from message.command_with_params import Command_OptimizeCTP
 from message.serverinfo import ServerInfo, CheckErpID, P_ZeitMngEinh, LicInfo
-from message.mb_activity import MbActivity, ActDispatch, BufferInfo
+from message.mb_activity import MbActivity, ActDispatch, ActSplit, BufferInfo
 from message.mb_resoverl import MbResOverl, MaSelUebRess
 from message.mb_resource import MbResource, MResourceKombination
 from message.m_serverkennz import MServerKennz
@@ -340,7 +340,7 @@ def get_id_to_class_mapping():
     if id_to_class_mapping is None:
         id_to_class_mapping = {}
         classes = [MD_Artikel, SArticle, ServerInfo, P_ZeitMngEinh, LicInfo, TrActivity, 
-                   MbActivity, ActDispatch, BufferInfo, MbResOverl, MaSelUebRess,
+                   MbActivity, ActDispatch, ActSplit, BufferInfo, MbResOverl, MaSelUebRess,
                    MbResource, MResourceKombination,
                    MServerKennz, M_DispoBew, 
                    S_BetriebKal, M_Kalender, M_KalenderZeit, M_IntKalender, 

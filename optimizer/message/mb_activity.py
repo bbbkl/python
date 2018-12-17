@@ -47,9 +47,9 @@ class MbActivity(BaseItem):
 
     def token_descriptions(self):        
         return ['ident_act', 'start_date', 'start_time', 'end_date', 'end_time',
-                'part_process', 'MinDLZ',
+                'part_process', 'min_dlz',
                 'is_on_critical_path', 'process_area', 'process', 'can_be_fixed',
-                'start_date_ideal', 'start_time_ideal', 'end_date_ideal', 'end_time_ideal',
+                'start_date_optimal', 'start_time_optimal', 'end_date_optimal', 'end_time_optimal',
                 'implicitly_fixed', 'optimization_type', 'setup_time_pct']
 
 
@@ -81,6 +81,39 @@ class ActDispatch(BaseItem):
     def token_descriptions(self):        
         return ['process_area', 'ident_act', 'start_date', 'start_time', 'end_date', 'end_time']
     
+    
+class ActSplit(BaseItem):
+    """One ActDispatch item"""
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+
+    def ident_akt(self):
+        """get activity id"""
+        return self._tokens[0]
+
+    def split_point(self):
+        """split point"""
+        return self._tokens[11]
+    
+    def starttime(self):
+        """start date / time"""
+        return "%s %s" % (self._tokens[1], self._tokens[2])
+
+    def headline_ids(self):
+        """get headline for explained mode"""
+        return "%s %s %s" % (self.ident_akt(), self.split_point(), self.starttime())
+
+    @classmethod        
+    def commands(cls):
+        return ['DEF_APSCommandcreate_MB_SplittAkt_', ]
+
+    def token_descriptions(self):        
+        return ['ident_act', 'start_date', 'start_time', 'end_date', 'end_time', 'part_process',
+                'min_dlz', 'is_on_critical_path', 'process_area', 'process', 'can_be_fixed',
+                'split_point',
+                'start_date_optimal', 'start_time_optimal', 'end_date_optimal', 'end_time_optimal']
+
+
 
 class BufferInfo(BaseItem):
     """One buffer info"""
