@@ -5,10 +5,12 @@ ToDo:
 * prüfe vor Erstellung Referenz, dass es nicht bereits ein Referenzverzeichnis ist 
 * Spezialbehandlung für to_sonic.dat Dateien
 * Vergleich Ausführungszeiten Einzelterminierung
-* version info (optsrv64.exe -version)
 * startup check (Kein Regressionsverzeichnis / keine Exe / keine Admin-Rechte)
+* Toleranz gegen Angaben mit Quotes, z.B. src_exe="d:/tmp/opti.exe"
 
 Erledigt:
+
+* version info (optsrv64.exe -version), and added to summary
 
 •	Summary
 Am Anfang vom Report eine Summary:

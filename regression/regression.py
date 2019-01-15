@@ -10,7 +10,7 @@ import sys
 import os
 import shutil
 import datetime
-from io import StringIO
+import re
 from argparse import ArgumentParser
 import smtplib
 from email.mime.text import MIMEText
@@ -64,6 +64,7 @@ class Regression:
         summary += " elapsed_time=%s" % duration
         summary += " result=%s" % self.get_result()
         summary += "\n%s" % self.regression_dir 
+        summary += "\n%s" % self.get_optimizer_version(self.config.get_src_exe())
         
         summary += "\nnumber of messagefiles=%d" % len(self.regression_messagefiles)
         for item in self.get_items():
@@ -174,11 +175,16 @@ class Regression:
 
     def get_optimizer_version(self, exe):
         """call optimizer -version and return result"""
-        cmd = '%s -version' % exe
-        print(cmd)
-        p = run(cmd, stdout=PIPE)
-        output = str(p.stdout)
-        return output[2:-1].replace(r'\r\n', '\n')
+        try:
+            cmd = '%s -version' % exe
+            p = run(cmd, stdout=PIPE)
+            output = str(p.stdout)
+            hit = re.search(r'APS-Server version:\s+(\S+).*Revision Number:(\S+(?: [a-zA-Z]+)?)', output)
+            if hit:
+                return ("version=%s revision=%s" % (hit.group(1), hit.group(2)))
+            return output[2:-1].replace(r'\r\n', '\n')
+        except:
+            return "version=FAILED_TO_EXTRACT (exe=%s)" % exe
 
     def call_optimizer(self, exe, params, message_files, create_reference=False):
         """call optimizer for each message file, return elapsed time"""
@@ -257,7 +263,7 @@ def main():
 
     try:
         regression = Regression(args.config_file)
-        #v = regression.get_optimizer_version(regression.config.get_regression_exe())
+        #v = regression.get_optimizer_version(regression.config.get_src_exe())
         #print("'%s'" % v)
         #return
         if args.create_reference:
