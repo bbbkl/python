@@ -10,11 +10,12 @@ import sys
 import os
 import shutil
 import datetime
+from io import StringIO
 from argparse import ArgumentParser
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from subprocess import run
+from subprocess import run, PIPE
 from RegressionConfig import RegressionConfig
 from RegressionMessagefile import RegressionMessagefile
 from RegressionException import RegressionException
@@ -171,6 +172,14 @@ class Regression:
                                 [item,], create_reference=True)
             item.rename_as_reference(timepoint_start)
 
+    def get_optimizer_version(self, exe):
+        """call optimizer -version and return result"""
+        cmd = '%s -version' % exe
+        print(cmd)
+        p = run(cmd, stdout=PIPE)
+        output = str(p.stdout)
+        return output[2:-1].replace(r'\r\n', '\n')
+
     def call_optimizer(self, exe, params, message_files, create_reference=False):
         """call optimizer for each message file, return elapsed time"""
         duration = datetime.datetime.now() - datetime.datetime.now()
@@ -248,6 +257,9 @@ def main():
 
     try:
         regression = Regression(args.config_file)
+        #v = regression.get_optimizer_version(regression.config.get_regression_exe())
+        #print("'%s'" % v)
+        #return
         if args.create_reference:
             regression.create_reference()
         regression.do_regression()
