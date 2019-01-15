@@ -5,6 +5,7 @@ encoding/RegressionException.py=ISO-8859-1
 encoding/RegressionLogfile.py=ISO-8859-1
 encoding/RegressionMessagefile.py=ISO-8859-1
 encoding/RegressionResultCodes.py=ISO-8859-1
+encoding/RegressionUtil.py=ISO-8859-1
 encoding/create_reference_dir.py=ISO-8859-1
 encoding/delete_unused_regression_files.py=ISO-8859-1
 encoding/flat_stat.py=ISO-8859-1

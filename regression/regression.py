@@ -3,7 +3,7 @@
 #
 # description
 """\n\n
-    regression util functions
+    regression main class
 """
 
 import sys
@@ -12,14 +12,13 @@ import shutil
 import datetime
 import re
 from argparse import ArgumentParser
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+
 from subprocess import run, PIPE
 from RegressionConfig import RegressionConfig
 from RegressionMessagefile import RegressionMessagefile
 from RegressionException import RegressionException
 from RegressionResultCodes import Regr
+from RegressionUtil import is_admin, send_regression_mail
 
 VERSION = '1.0'
 
@@ -32,6 +31,24 @@ class Regression:
         self.regression_dir = None
         self.regression_messagefiles = []
         
+    @staticmethod
+    def startup_check(config_file, ref_exe_check):
+        msg = ""
+        if not is_admin():
+            msg += "\n\t" + "no admin rights"
+        if not os.path.exists(config_file):
+            msg += "\n\t" + "no config (%s)" % config_file
+        else:
+            cfg = RegressionConfig(config_file)
+            if not os.path.exists(cfg.get_reference_dir()):
+                msg += "\n\t" + "no reference dir (%s)" % cfg.get_reference_dir()
+            if ref_exe_check and not os.path.exists(cfg.get_ref_exe()):
+                msg += "\n\t" + "no ref_exe (%s)" % cfg.get_ref_exe()
+            if not os.path.exists(cfg.get_src_exe()):
+                msg += "\n\t" + "no src_exe (%s)" % cfg.get_src_exe()
+        if msg:
+            raise RegressionException("startup check failed" + msg)
+          
     def get_id(self):
         return self.config.get_headline()
     
@@ -116,7 +133,7 @@ class Regression:
         except RegressionException as ex:
             print(ex)
             subject = "regression %s result=FATAL_FAIL" % self.get_id()
-            send_regression_mail(subject, str(ex), self.config.get_recipients())
+            send_regression_mail(subject, str(ex), self.config.get_recipients(), self.develop)
             
 
     def set_messagefiles(self, regression_dir, expect_reference=True):
@@ -215,32 +232,7 @@ class Regression:
         body = self.create_summary(duration)
         self.prepend_to_report(body)
         body += self.create_report()
-        send_regression_mail(subject, body, self.config.get_recipients())
-
-def send_regression_mail(subject, text, recipients):
-    """mail given subject / text to recipients, provided as comma separated list"""
-    if not recipients:
-        return
-    address_book = recipients.split(',') #['bernd.krueger@proalpha.de', 'jens.leoff@proalpha.de', 'robert.wagner@proalpha.de']
-    msg = MIMEMultipart()    
-    sender = 'Jenkins.PPS@proalpha.de'
-    body = text + '\n\nto enable/activate symlinks on your machine, please type:\n\tfsutil behavior set SymlinkEvaluation R2R:1'
-    
-    msg['From'] = sender
-    msg['To'] = ','.join(address_book)
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
-    text=msg.as_string()
-    if Regression.develop:
-        print("mail from=%s" % msg['From'])
-        print("mail to=%s" % msg['To'])
-        print("subject=%s" % msg['Subject'])
-        print("body=%s" % body)
-        return
-    s = smtplib.SMTP('10.1.0.62')
-    s.sendmail(sender,address_book, text)
-    s.quit()
-        
+        send_regression_mail(subject, body, self.config.get_recipients())        
 
 def parse_arguments():
     """parse commandline arguments"""
@@ -262,10 +254,13 @@ def main():
     Regression.develop = args.develop
 
     try:
+        Regression.startup_check(args.config_file, args.create_reference)
+        
         regression = Regression(args.config_file)
         #v = regression.get_optimizer_version(regression.config.get_src_exe())
         #print("'%s'" % v)
         #return
+        
         if args.create_reference:
             regression.create_reference()
         regression.do_regression()
