@@ -40,12 +40,20 @@ class Regression:
             msg += "\n\t" + "no config (%s)" % config_file
         else:
             cfg = RegressionConfig(config_file)
-            if not os.path.exists(cfg.get_reference_dir()):
-                msg += "\n\t" + "no reference dir (%s)" % cfg.get_reference_dir()
-            if ref_exe_check and not os.path.exists(cfg.get_ref_exe()):
-                msg += "\n\t" + "no ref_exe (%s)" % cfg.get_ref_exe()
-            if not os.path.exists(cfg.get_src_exe()):
-                msg += "\n\t" + "no src_exe (%s)" % cfg.get_src_exe()
+            path_to_check = str(cfg.get_reference_dir())
+            if not os.path.exists(path_to_check):
+                msg += "\n\t" + "no reference dir (%s)" % path_to_check
+            path_to_check = str(cfg.get_ref_exe())
+            if ref_exe_check and not os.path.exists():
+                msg += "\n\t" + "no ref_exe (%s)" % path_to_check
+            if cfg.get_src_exe() is not None:
+                path_to_check = str(cfg.get_src_exe())
+                if not os.path.exists(path_to_check):
+                    msg += "\n\t" + "no src_exe (%s)" % path_to_check
+            else:
+                path_to_check = str(cfg.get_regression_exe())
+                if not os.path.exists(path_to_check):
+                    msg += "\n\t" + "no regression_exe (%s)" % path_to_check
         if msg:
             raise RegressionException("startup check failed" + msg)
           
@@ -81,8 +89,8 @@ class Regression:
         summary += " elapsed_time=%s" % duration
         summary += " result=%s" % self.get_result()
         summary += "\n%s" % self.regression_dir 
-        summary += "\n%s" % self.get_optimizer_version(self.config.get_src_exe())
-        
+        summary += "\n%s" % self.get_optimizer_version(self.config.get_regression_exe())
+
         summary += "\nnumber of messagefiles=%d" % len(self.regression_messagefiles)
         for item in self.get_items():
             item_result = item.get_result()
@@ -257,8 +265,10 @@ def main():
         Regression.startup_check(args.config_file, args.create_reference)
         
         regression = Regression(args.config_file)
-        #v = regression.get_optimizer_version(regression.config.get_src_exe())
-        #print("'%s'" % v)
+        #summary = "xxx"
+        #summary += "\n%s" % regression.get_optimizer_version(regression.config.get_regression_exe())
+        #summary += "\nnumber of messagefiles=%d" % 42
+        #print(summary)
         #return
         
         if args.create_reference:
