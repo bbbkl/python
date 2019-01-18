@@ -86,7 +86,12 @@ class ResInfo:
         return '\t'.join(self._tokens)
         
 def get_datetime_from_string(str_time):
-    return datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S')        
+    try:
+        # format 2018-11-30 01:21:00
+        return datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S')
+    except:
+        # format 13.11.2018 13:03
+        return datetime.strptime(str_time, '%d.%m.%Y %H:%M')
         
 def show_non_mofas(setup_file):
     """get total numer of different values. show stat value -> #number"""
@@ -324,7 +329,12 @@ def pretty_print_accumulated_setup_stats(resourceToValues, log_stats):
     
     print('\nresources 00410 - 00415 + 00466 - 00468')
     print('dirname;interval;horizon;total_cost;total_values;range_values;range_cost;range_work;Earliness;Lateness;#early;#in_time;#delayed;execution_time;step_times (secs)')
-    for name in sorted(idToSum):
+    sorted_keys = sorted(idToSum)
+    key = 'without_setup_opti'
+    if key in sorted_keys:
+        sorted_keys.remove(key)
+        sorted_keys.insert(0, key)
+    for name in sorted_keys:
         sub_stat = idToSum[name]
         i = sub_stat['interval']
         h = sub_stat['horizon']
@@ -397,8 +407,18 @@ def pretty_print_value_stat(value_stat):
         for res in sorted(resToCnt):
             if res.find('_value') != -1: 
                 continue
-            line += ";%s=%d" % (res, resToCnt[res])
+            #line += ";%s=%d" % (res, resToCnt[res])
+            line += ";%d" % resToCnt[res]
         print(line)
+    
+def get_proc_id(act_name):
+    keys = ('PPA', 'PPN', 'CDD')
+    for key in keys:
+        idx = act_name.find(' ' + key)
+        if idx != -1:
+            break
+    proc_id = act_name[:idx]
+    return proc_id
     
 def pretty_print_value_stat2(value_stat, proc_info):
     for key in sorted(value_stat):
@@ -408,15 +428,15 @@ def pretty_print_value_stat2(value_stat, proc_info):
                 continue
             print("\nval=%s res=%s cnt=%d" % (key, res, resToCnt[res]))
             items = value_stat[key][res + "_values"]
+            last_item_idx = 3
             for item in items:
                 act = item[0]
-                idx = act.find(' ')
-                proc_id = act[:idx]
+                proc_id = get_proc_id(act)
                 item.append(proc_info[proc_id]['duedate'])
                 item.append(proc_info[proc_id]['prio'])
             items = sorted(items, key=itemgetter(3)) # 3 - duedate, 1 - start
             for item in items:
-                print('\tact=%-30s prio=%-3s duedate=%s start=%s end=%s' % (item[0], item[4], item[3], item[1], item[2]))
+                print('\tact=%-30s fix=%s prio=%-3s duedate=%s start=%s end=%s' % (item[0], item[3], item[last_item_idx+2], item[last_item_idx+1], item[1], item[2]))
                 # excel like output
                 #print('%s;%s;%s;%s;%s' % (item[0], item[4].replace('.', ','), item[3], item[1], item[2]))
     
@@ -477,9 +497,11 @@ def cal_value_stat(setup_files):
                 valueStat[val].setdefault(res, 0)
                 valueStat[val][res] += 1
                 valueStat[val].setdefault(res_val, [])
-                valueStat[val][res_val].append([tokens[0], tokens[1], tokens[2]])
+                fixed = '1' if tokens[4] == 'true' else '0'
+                valueStat[val][res_val].append([tokens[0], tokens[1], tokens[2], fixed])
     pretty_print_value_stat(valueStat)
     pretty_print_value_stat2(valueStat, get_proc_info(setup_files))
+    
 
 """
 def getDurations(setup_file):
