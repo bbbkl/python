@@ -44,7 +44,7 @@ class Regression:
             if not os.path.exists(path_to_check):
                 msg += "\n\t" + "no reference dir (%s)" % path_to_check
             path_to_check = str(cfg.get_ref_exe())
-            if ref_exe_check and not os.path.exists():
+            if ref_exe_check and not os.path.exists(path_to_check):
                 msg += "\n\t" + "no ref_exe (%s)" % path_to_check
             if cfg.get_src_exe() is not None:
                 path_to_check = str(cfg.get_src_exe())
