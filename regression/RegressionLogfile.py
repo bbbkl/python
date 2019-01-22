@@ -50,6 +50,11 @@ class RegressionLogfile:
         ref_secs = self.get_total_seconds(self.get_reference_file())
         res_secs = self.get_total_seconds(self.get_result_file())
         report = "\n\ttime reference=%s result=%s" % (pretty_format_secs(ref_secs), pretty_format_secs(res_secs))
+        ref_ctp_msecs = self.get_avg_ctp_msecs(self.get_reference_file())
+        res_ctp_msecs = self.get_avg_ctp_msecs(self.get_result_file())
+        if ref_ctp_msecs and res_ctp_msecs:
+            pct = round(res_ctp_msecs * 100 / max(ref_ctp_msecs, 1))
+            report += "\n\tavg msecs ctp reference=%d result=%d (%d%%)" % (ref_ctp_msecs, res_ctp_msecs, pct)
         report += self.get_config_diff()
         return report
     
@@ -145,6 +150,22 @@ class RegressionLogfile:
                     result.append(line[:-1])
         return result
     
+    def get_avg_ctp_msecs(self, logfile):
+        """get avg ctp execution time in msecs or None"""
+        if logfile is None or not os.path.exists(logfile):
+            return None
+        rgx = re.compile(r'calcCtp Nr=(\d+).*abs_msecs=(\d+)')
+        start_tp = None
+        for line in open(logfile):
+            hit = rgx.search(line)
+            if hit:
+                if start_tp is None:
+                    start_no, start_tp = map(int, hit.groups())
+                end_no, end_tp = map(int, hit.groups())    
+        if start_tp is None:
+            return None
+        return round((end_tp - start_tp) / (end_no- start_no + 1))
+    
     def get_total_seconds(self, logfile):
         """differnce last - first timestamp"""
         if logfile is None or not os.path.exists(logfile):
@@ -179,9 +200,11 @@ def main():
     args = parse_arguments()
 
     item = RegressionLogfile(args.reference_file)
-    print(item)
+    #print(item)
     #print(item.get_result())
-        
+    #print("avg ctp duration=%s msecs" % item.get_avg_ctp_msecs(args.reference_file))
+    print(item.create_report())    
+    
 if __name__ == "__main__":
     try:
         main()
