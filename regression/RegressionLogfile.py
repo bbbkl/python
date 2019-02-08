@@ -47,14 +47,27 @@ class RegressionLogfile:
         return msg
       
     def create_report(self):
-        ref_secs = self.get_total_seconds(self.get_reference_file())
-        res_secs = self.get_total_seconds(self.get_result_file())
+        ref, res = self.get_reference_file(), self.get_result_file()
+        ref_secs = self.get_total_seconds(ref)
+        res_secs = self.get_total_seconds(res)
         report = "\n\ttime reference=%s result=%s" % (pretty_format_secs(ref_secs), pretty_format_secs(res_secs))
-        ref_ctp_msecs = self.get_avg_ctp_msecs(self.get_reference_file())
-        res_ctp_msecs = self.get_avg_ctp_msecs(self.get_result_file())
+        ref_ctp_msecs = self.get_avg_ctp_msecs(ref)
+        res_ctp_msecs = self.get_avg_ctp_msecs(res)
         if ref_ctp_msecs and res_ctp_msecs:
             pct = round(res_ctp_msecs * 100 / max(ref_ctp_msecs, 1))
             report += "\n\tavg msecs ctp reference=%d result=%d (%d%%)" % (ref_ctp_msecs, res_ctp_msecs, pct)
+        errs_ref, errs_res = self.get_errors(ref), self.get_errors(res)
+        if errs_ref:
+            report += "\n\terrors in reference:"
+            for item in errs_ref:
+                report += "\n\t\t%s" % item
+        if errs_res:
+            report += "\n\terrors in result:"
+            for item in errs_res:
+                report += "\n\t\t%s" % item
+        wcnt_ref, wcnt_res = len(self.get_warnings(ref)), len(self.get_warnings(res))
+        if wcnt_ref != wcnt_res:
+            report += "\n\t#warnings differs #ref=%d #res=%d" % (wcnt_ref, wcnt_res) 
         report += self.get_config_diff()
         return report
     
@@ -200,8 +213,8 @@ def main():
     args = parse_arguments()
 
     item = RegressionLogfile(args.reference_file)
-    #print(item)
-    #print(item.get_result())
+    print(item)
+    print("result=%s" % item.get_result())
     #print("avg ctp duration=%s msecs" % item.get_avg_ctp_msecs(args.reference_file))
     print(item.create_report())    
     
