@@ -253,6 +253,9 @@ def parse_arguments():
     parser.add_argument('-cr', '--create_reference', action="store_true", # or stare_false
                       dest="create_reference", default=False, # negative store value
                       help="create reference dir before doing regression")
+    parser.add_argument('-cro', '--create_reference_only', action="store_true", # or stare_false
+                      dest="create_reference_only", default=False, # negative store value
+                      help="create reference dir only")
     return parser.parse_args()
 
 def main():
@@ -271,8 +274,10 @@ def main():
         #print(summary)
         #return
         
-        if args.create_reference:
+        if args.create_reference or args.create_reference_only:
             regression.create_reference()
+            if args.create_reference_only:
+                return
         regression.do_regression()
         
         """
