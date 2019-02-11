@@ -19,19 +19,25 @@ class ToString(object):
     @classmethod
     def scheduling_obj_type(cls, val):
         """Scheduling type 
-           OTUndefined    = -1,
-           OTDemand       = 0,
-           OTActivity     = 1,
-           OTTempActivity = 2,
-           OTPartProc     = 3,
-           OTTempPartProc = 4
+           Undefined = -1,
+           MRPMovementDemand = 0,
+           FixedActivityDemand = 1,
+           Activity = 2,
+           TempActivity = 3,
+           PartProc = 4,
+           TempPartProc = 5,
+           ActivityFallback = 6, // Number used in ERP
+           TempActivityFallback = 7 // Number used in ERP  
         """
         val = to_int(val)
-        if val == 0: return 'Demand'
-        if val == 1: return 'Activity'
-        if val == 2: return 'TempActivity'
-        if val == 3: return 'OTPartProc'
-        if val == 4: return 'OTTempPartProc'
+        if val == 0: return 'MRPMovementDemand'
+        if val == 1: return 'FixedActivityDemand'
+        if val == 2: return 'Activity'
+        if val == 3: return 'TempActivity'
+        if val == 4: return 'PartProc'
+        if val == 5: return 'TempPartProc'
+        if val == 6: return 'ActivityFallback'
+        if val == 7: return 'TempActivityFallback'
         return 'undefined'
         
     @classmethod

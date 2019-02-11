@@ -240,12 +240,11 @@ class TrActivity(BaseItem):
                 'PBO']
         
         return ['process_area_head', 'process', 'part_process', 'act_pos', 'Akt_Art',
-                'ident_act', 'Zeitwahl', 'Zeit', 'Zeit_einheit', 'TR', 'TE',
+                'ident_act', 'Zeitwahl', 'Zeit', 'Zeit_einheit', 'TR (deprecated with setup opt)', 'TE',
                 'TR_timeunit', 'TE_timeunit', 'Zeitmengen_Einheit', 'start_date',
                 'end_date', 'Fixiert', 'condition_date', 'condition_type', 'mat_reservation_date',
                 'start_time', 'end_time', 'Unterbrechbar', '#Unterbrechungen', 
                 'Zeitraum', 'Zeitraum_einheit', 'Min_Zwischenzeit', 'Min_Zwischenzeit_Einheit',
                 'Fertigungstyp', 'Fertig_gemeldet', 'cal', 'activity_class', 'partial_lot',
-                'total_lot_size', 'TR_total', 'TE_total', 'continous_production',
-                'continous_demand', 'PBO', 'Pufferaktivität', 
-                'default_setuptime', 'actual_setuptime']
+                'total_lot_size', 'TR_total (deprecated with setup opt)', 'TE_total', 'continous_production',
+                'continous_demand', 'PBO', 'Pufferaktivität', 'DefaultSetupTime', 'tr_ist']
