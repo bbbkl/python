@@ -68,6 +68,8 @@ class RegressionMessagefile:
     def rename_to_reference(self, src): 
         """rename given src file as <prefix>reference.<extension>"""
         src_name = os.path.basename(src)
+        if src_name == 'optsrv.ini':
+            return
         pfx, ext = os.path.splitext(src_name)
         if pfx.lower().find('_schedinfo') != -1:
             dst_name = self.get_basename() + '.' + pfx[1:] + '.reference' + ext
