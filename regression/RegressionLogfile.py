@@ -30,6 +30,7 @@ class RegressionLogfile:
     """regression logfile pair based on a message file initialized with reference.log."""
     def __init__(self, reference_file):
         self.reference_file = reference_file
+        self.encoding_cache = {}
     
     def __str__(self):
         msg = "RegressionLogfile\n\tref='%s %d'\n\tres='%s %d'" % \
@@ -109,7 +110,7 @@ class RegressionLogfile:
             key_config_start = '- active configuration -'
             rgx_config_entry = re.compile(r'\s+\([^)]+\)\s+(\S+)=(\S+)')
             in_config = False
-            for line in open(logfile):
+            for line in open(logfile, encoding=self.get_encoding(logfile)):
                 if in_config:
                     hit = rgx_config_entry.search(line)
                     in_config = hit is not None
@@ -157,7 +158,7 @@ class RegressionLogfile:
         result = []
         if logfile:
             rgx = re.compile(pattern, re.IGNORECASE)
-            for line in open(logfile):
+            for line in open(logfile, encoding=self.get_encoding(logfile)):
                 hit = rgx.search(line)
                 if hit:
                     result.append(line[:-1])
@@ -169,7 +170,7 @@ class RegressionLogfile:
             return None
         rgx = re.compile(r'calcCtp Nr=(\d+).*abs_msecs=(\d+)')
         start_tp = None
-        for line in open(logfile):
+        for line in open(logfile, encoding=self.get_encoding(logfile)):
             hit = rgx.search(line)
             if hit:
                 if start_tp is None:
@@ -185,12 +186,12 @@ class RegressionLogfile:
             return -1
         rgx_time = re.compile('^(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\:\d{2}\:\d{2})')
         ts1 = ts2 = None
-        for line in open(logfile):
+        for line in open(logfile, encoding=self.get_encoding(logfile)):
             hit = rgx_time.search(line)
             if hit:
                 ts1 = "%s %s" % (hit.group(1), hit.group(2))
                 break
-        for line in reversed(list(open(logfile))):
+        for line in reversed(list(open(logfile, encoding=self.get_encoding(logfile)))):
             hit = rgx_time.search(line)
             if hit:
                 ts2 = "%s %s" % (hit.group(1), hit.group(2))
@@ -199,7 +200,30 @@ class RegressionLogfile:
         tp2 = get_datetime_from_string(ts2)
         delta = tp2 - tp1
         return delta.total_seconds()
+     
+    def get_encoding(self, filename):
+        """check which encoding is used within given file"""
+        if not filename in self.encoding_cache:
+            self.encoding_cache[filename] = test_encoding(filename)
+        return self.encoding_cache[filename]
+     
+def test_encoding(message_file):
+    """check for file encoding"""
+    encodings = ["UTF-8", "ISO-8859-1", "latin-1"]
+    
+    if not os.path.exists(message_file):
+        raise FileNotFoundError(message_file)
+    
+    for item in encodings:
+        try:
+            for line in open(message_file, encoding=item):
+                pass
+            return item
+        except:
+            pass
         
+    raise ("Cannot get right encoding, tried %s" % str(encodings))
+     
 def parse_arguments():
     """parse commandline arguments"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION    
