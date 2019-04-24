@@ -11,6 +11,7 @@ from datetime import datetime
 import re
 import os
 from RegressionResultCodes import Regr
+import sys
 
 VERSION = '1.0'
 
@@ -70,6 +71,7 @@ class RegressionLogfile:
         if wcnt_ref != wcnt_res:
             report += "\n\t#warnings differs #ref=%d #res=%d" % (wcnt_ref, wcnt_res) 
         report += self.get_config_diff()
+        report += self.get_key_value_diffs()
         return report
     
     def get_config_diff(self):
@@ -79,12 +81,12 @@ class RegressionLogfile:
             res = self.get_active_conifg(self.get_result_file())
             for key in ref:
                 if not key in res:
-                    diff += "\n\t%s reference=%s, result=default" % (key, ref[key])
+                    diff += "\n\t\t%s reference=%s, result=default" % (key, ref[key])
                 elif ref[key] != res[key]:
-                    diff += "\n\t%s reference=%s result=%s" % (key, ref[key], res[key])
+                    diff += "\n\t\t%s reference=%s result=%s" % (key, ref[key], res[key])
             for key in res:
                 if not key in ref:
-                    diff += "\n\t%s reference=default, result=%s" % (key, res[key])
+                    diff += "\n\t\t%s reference=default, result=%s" % (key, res[key])
             if diff:
                 diff = "\n\tconfiguration differs" + diff
         return diff
@@ -101,6 +103,8 @@ class RegressionLogfile:
         if self.get_errors(ref) or self.get_errors(res):
             return Regr.FAILED
         if len(self.get_warnings(ref)) < len(self.get_warnings(res)):
+            return Regr.DIFF
+        if self.get_key_value_diffs():
             return Regr.DIFF
         return Regr.OK
     
@@ -131,6 +135,62 @@ class RegressionLogfile:
         false_positives = []
         return self.filter_false_positives(candidates, false_positives)
 
+    def get_keys(self):
+        """watchout for these keys within logfile""" 
+        return ['decompositions all/unexpected:', 
+                'no solution:',
+                'early:',
+                'in time:',
+                'delayed:',
+                'Lateness total/avg/max:',
+                'Earliness total/avg/max:']
+
+    def make_key_val_rgx(self, keys):
+        pattern = "^\s*(" + keys[0]
+        for key in keys:
+            pattern += "|%s" % key
+        pattern += r")\s+(\d.*)$"
+        return re.compile(pattern)
+
+    def pretty_val(self, val):
+        hit = re.search(r'(\t|\s{2})', val)
+        while hit:
+            val = val.replace(hit.group(1), ' ') 
+            hit = re.search(r'(\t|\s{2})', val)
+        val = val.replace('( ', '(')
+        return val
+
+    def get_key_value_pairs(self, logfile):
+        result = {} 
+        keys = self.get_keys()
+        rgx = self.make_key_val_rgx(keys)
+        if os.path.exists(logfile):
+            for line in open(logfile, encoding=self.get_encoding(logfile)):
+                hit = rgx.search(line)
+                if hit:
+                    key = hit.group(1)
+                    val = hit.group(2)
+                    result[key] = self.pretty_val(val)
+                    keys.remove(key)
+                    if len(keys) == 0:
+                        break
+                    rgx = self.make_key_val_rgx(keys)
+        for key in keys:
+            result[key] = 'NOT_FOUND'
+        return result
+    
+    def get_key_value_diffs(self):
+        diff = ""
+        if os.path.exists(self.get_reference_file()) and os.path.exists(self.get_result_file()):
+            ref = self.get_key_value_pairs(self.get_reference_file())
+            res = self.get_key_value_pairs(self.get_result_file())
+            for key in self.get_keys():
+                if ref[key] != res[key]:
+                    diff += "\n\t\t%s '%s' <-> '%s'" % (key, ref[key], res[key])
+            if diff:
+                diff = "\n\tkey value pairs differ (ref <-> res)" + diff
+        return diff
+    
     def filter_false_positives(self, candidates, false_positives):
         result = []
         for item in candidates:
