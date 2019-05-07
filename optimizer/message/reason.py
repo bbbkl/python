@@ -25,10 +25,17 @@ class ReasonMaterial(BaseItem):
     def proc_id(self):
         """get proc id"""
         return self._tokens[3]
+    
+    def part(self):
+        """get material"""
+        return self._tokens[5]
+
+    def is_combi(self):
+        return 0 if self._tokens[15] == "0" else 1
 
     def headline_ids(self):
         """get headline for explained mode"""
-        return "%s %s %s" % (self.opt_number(), self.is_ctp(), self.proc_id())
+        return "%s %s %s %s %s" % (self.opt_number(), self.is_ctp(), self.proc_id(), self.part(), self.is_combi())
 
     def verbose_tokens(self):
         """possibility to enrich some cryptic values with their human readable description"""
@@ -242,3 +249,119 @@ class ReasonStructure(BaseItem):
                 'earliestStartDate', 'earliestStartTime',
                 'earliestEndDate', 'earliestEndTime', 'tardiness', 'Partproc', 
                 'PartprocIsTemp', 'ReasonSubtype']
+        
+
+# new 7.1 reasons commands
+class ReasonHead(BaseItem):
+    """One reason head"""
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+
+    def partproc(self):
+        """get part proc id"""
+        return self._tokens[1]
+
+    def is_cluster(self):
+        """1 = cluster"""
+        return self._tokens[2]
+    
+    def is_ctp(self):
+        """is a ctp yes/no"""
+        return self._tokens[3]
+
+    def headline_ids(self):
+        """get headline for explained mode"""
+        return "%s %s %s" % (self.is_cluster(), self.is_ctp(), self.partproc())
+
+    def verbose_tokens(self):
+        """possibility to enrich some cryptic values with their human readable description"""
+        tokens = list(self._tokens)
+        self.verbose_token(0, ToString.scheduling_obj_type, tokens)
+        self.verbose_token(8, ToString.reasoning_state, tokens)
+        return tokens
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_APSCommandcreate_ReasonHead___']
+
+    def token_descriptions(self):
+        return ['head_obj_type', 'part_process', 'is_cluster_reason', 'is_ctp',
+                'due_date', 'due_time',
+                'optimization_type', 'opt_target', 'reasoning_state']
+        
+class Reason(BaseItem):
+    """One sub reason which belongs to a reason head"""
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+
+    def is_ctp(self):
+        """is a ctp yes/no"""
+        return self._tokens[3]
+
+    def partproc(self):
+        """get part proc id"""
+        return self._tokens[1]
+
+    def transmission_id(self):
+        """transmission id"""
+        return self._tokens[4]
+
+    def headline_ids(self):
+        """get headline for explained mode"""
+        return "%s %s" % (self.transmission_id(), self.partproc())
+
+    def verbose_tokens(self):
+        """possibility to enrich some cryptic values with their human readable description"""
+        tokens = list(self._tokens)
+        self.verbose_token(0, ToString.scheduling_obj_type, tokens)
+        self.verbose_token(5, ToString.reason_type, tokens)
+        return tokens
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_APSCommandcreate_Reason_______']
+
+    def token_descriptions(self):
+        return ['head_obj_type', 'part_process', 'is_cluster_reason', 'is_ctp',
+                'transmission_id', 'reason_type', 'tardiness',
+                'par8', 'par9',
+                'par10', 'par11',
+                'par12', 'par13', 'par14']    
+        
+class ReasonAct(BaseItem):
+    """One reason activity which belongs to a reason"""
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+    
+    def act_type(self):
+        """what object this reason refers to"""
+        return ToString.scheduling_obj_type(self._tokens[0])
+
+    def ident_act(self):
+        """id of act"""
+        return self._tokens[1]
+
+    def transmission_id(self):
+        """transmission id"""
+        return self._tokens[2]
+
+    def headline_ids(self):
+        """get headline for explained mode"""
+        return "%s %s" % (self.transmission_id(), self.ident_act())
+
+    def verbose_tokens(self):
+        """possibility to enrich some cryptic values with their human readable description"""
+        tokens = list(self._tokens)
+        self.verbose_token(0, ToString.scheduling_obj_type, tokens)
+        return tokens
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_APSCommandcreate_ReasonAct____']
+
+    def token_descriptions(self):
+        return ['act_type', 'ident_act', 'transmission_id', 'tardiness_act', 
+                'earliest_start_date', 'earliest_start_time',
+                'latest_non_delay_end_date', 'latest_non_delay_end_time',
+                'demand_date', 'demand_time',
+                'missing_amount', 'needed_amount', 'resource_reference']            

@@ -24,7 +24,7 @@
 #define DEF_ERPCommandCheckErpID__________  110 //!< check received optimizer version against actual version of application (older app. is forbidden)
 #define DEF_ERPCommandSetConfigParam______  111 //!< add the received configuration parameter to ApsConfig
 #define DEF_ERPCommandPingServerState_____  112 //!< ping from erp to optimizer
-#define DEF_ERPCommandLicensedModules_____  113
+#define DEF_ERPCommandLicensedModules_____  113 //!< list of licensed APS modules
 
 #define DEF_ERPCommandoptimize____________  120 //!< start complete optimization
 #define DEF_ERPCommandoptimizeCTP_________  121 //!< start single order (ctp) optimization
@@ -229,9 +229,10 @@
 #define DEF_APSCommandackSolution_________  820 //!< sent information: complete optimization result is sent
 #define DEF_APSCommandackSolutionCTP______  821 //!< sent information: ctp optimization result is sent
 #define DEF_APSCommandackSolutionCtpProd__  822 //!< sent information: ctp prod. (several orders) optimization result is sent
-#define DEF_APSCommandackSolutionBlock____  823 //!< sent after solution block has been sent
+//#define DEF_APSCommandackSolutionBlock____  823 //!< sent after solution block has been sent // not used any more
 #define DEF_APSCommandcreate_SchedInfo____  824 //!< send scheduling info 
-#define DEF_APSCommandcreate_SchedTrigger_  825 //!< send scheduling trigger information
+#define DEF_APSCommandcreate_SchedTrigger_  825 //!< send demand proxy information
+#define DEF_APSCommandackSolutionResult___  826 //!< sent after solution block has been sent 
 
 #define DEF_APSCommandcreate_ContTimePoint  839 //!< sending information about continuous demand/supply
 #define DEF_APSCommandcreate_MB_Aktivitaet  840 //!< sending activity data to ERP
@@ -251,6 +252,7 @@
 
 //! tardiness reasoning - deprecated
 //#define DEF_APSCommandcreate_ReasonXML____  852 //!< inactive, not used. send xml which contains all reasons of one process - obsolete, feature is not supported any more
+//! commands for ReasonSendingFormat61
 #define DEF_APSCommandcreate_ReasonStruc__  853 //!< send structure reason
 #define DEF_APSCommandcreate_ReasonMat____  854 //!< send material reason
 #define DEF_APSCommandcreate_ReasonRes____  855 //!< send resource reason
@@ -278,6 +280,11 @@
 
 #define DEF_ERPCommandLogStart____________  921 // send logging message to ERP, start of measurement
 #define DEF_ERPCommandLogEnd______________  922 // send logging message to ERP, end of measurement
+
+//! commands for ReasonSendingFormat71e
+#define DEF_APSCommandcreate_ReasonHead___  930 //!< send reason head information 
+#define DEF_APSCommandcreate_Reason_______  931 //!< send reason information 
+#define DEF_APSCommandcreate_ReasonAct____  932 //!< send activity information for reason 
 
 // APS server commands are defined in ApsStatus.h
 

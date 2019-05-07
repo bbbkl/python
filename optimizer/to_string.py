@@ -17,6 +17,42 @@ class ToString(object):
     """to string methods"""
         
     @classmethod
+    def reason_type(cls, val):
+        """ReasonType 
+           //Admin = 10, deprecated as of 71e
+          Structure = 20,
+          TimeBound = 30,
+          Resource = 40,
+          Material = 50,
+          MaterialResource = 60,
+          ResourceResource = 70
+        """
+        val = to_int(val)
+        if val == 10: return 'Admin'
+        if val == 20: return 'Structure'
+        if val == 30: return 'TimeBound'
+        if val == 40: return 'Resource'
+        if val == 50: return 'Material'
+        if val == 60: return 'MaterialResource'
+        if val == 70: return 'ResourceResource'
+        return 'undefined'
+    
+    @classmethod
+    def reasoning_state(cls, val):
+        """ReasoningState 
+          NotTardy          = 100
+          HasReasons        = 101
+          NoReasonsFound    = 102
+          NoReasonsComputed = 103
+        """
+        val = to_int(val)
+        if val == 100: return 'NotTardy'
+        if val == 101: return 'HasReasons'
+        if val == 102: return 'NoReasonsFound'
+        if val == 103: return 'NoReasonsComputed'
+        return 'undefined'
+        
+    @classmethod
     def scheduling_obj_type(cls, val):
         """Scheduling type 
            Undefined = -1,
