@@ -125,4 +125,4 @@ class BufferInfo(BaseItem):
         return ['DEF_APSCommandcreate_BufferInfo___', ]
 
     def token_descriptions(self):        
-        return ['process', 'buffertime_tompllete', 'buffertime_left', 'buffertime_as_string [h]']
+        return ['process', 'buffertime_complete', 'buffertime_left', 'buffertime_as_string [h]']
