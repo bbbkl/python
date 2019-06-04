@@ -101,7 +101,7 @@ class RegressionLogfile:
         """dummy implementation so far"""
         ref, res = self.get_reference_file(), self.get_result_file()
         if self.get_errors(ref) or self.get_errors(res):
-            return Regr.FAILED
+            return Regr.FAILED if self.get_errors(res) else Regr.DIFF 
         if len(self.get_warnings(ref)) < len(self.get_warnings(res)):
             return Regr.DIFF
         if self.get_key_value_diffs():
