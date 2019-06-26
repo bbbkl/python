@@ -28,8 +28,8 @@ class TrActivity(BaseItem):
         
     @classmethod
     def check_for_reservation(cls, dateval):
-        if TrActivity._server_date is not None and dateval != TrActivity._server_date:
-            return 'reservation'
+        if dateval != '' and  TrActivity._server_date is not None and dateval != TrActivity._server_date:
+            return 'reservation/stable_area'
         return ''
         
     def __str__(self):
