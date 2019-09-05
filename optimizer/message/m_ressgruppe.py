@@ -25,4 +25,4 @@ class MRessGruppe(BaseItem):
         return ['DEF_ERPCommandcreate_M_RessGruppe_', ]
     
     def token_descriptions(self):
-        return ['RessGruppe', 'AdressNr']
+        return ['RessGruppe', 'AdressNr', 'stable_area', 'stable_area_extended']
