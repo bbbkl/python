@@ -30,7 +30,7 @@ def users():
     # kmu kerstin muxfeld
     # rw  robert wagner
     # 
-    return ['bk', 'rw', 'JL', 'da', 'dcs', 'DoA', 'fw', 'HN', 'jhp', 'lhe', 'mb', 'ms', 'fei', 'FEi', 'pek', 'ub', 'um', 'ab']
+    return ['bko', 'bk', 'rw', 'JL', 'da', 'dcs', 'DoA', 'fw', 'HN', 'jhp', 'lhe', 'mb', 'ms', 'fei', 'FEi', 'pek', 'ub', 'um', 'ab']
 
 def generate_user_queue_names(pa_version, user):
     to_queue = 'apsMessaging.proalpha-%s-demo-%s.apsdemo.toApsServer' % (pa_version, user)
