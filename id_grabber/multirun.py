@@ -137,7 +137,7 @@ def parse_arguments():
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
-    #parser.add_argument('memory_usage_file', metavar='memory_usage_file', help='input memory usage file')
+    parser.add_argument('memory_usage_file', metavar='memory_usage_file', help='input memory usage file')
     parser.add_argument('-cfg', '--config', metavar='string',
                         dest='config', default='', 
                         help="parse given multirun config file")
@@ -152,9 +152,11 @@ def main():
     """main function"""
     args = parse_arguments()
     
-    #filename = args.memory_usage_file
-    #multirun_csv(filename)
-    
+    if 1:
+        filename = args.memory_usage_file
+        multirun_csv(filename)
+        return 0
+
     config = MultirunConfig(args)   
     print(config) 
     do_multirun(config)
