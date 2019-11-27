@@ -111,7 +111,7 @@ class RegressionLogfile:
     def get_active_conifg(self, logfile):
         result = {} 
         if os.path.exists(logfile):
-            key_config_start = '- active configuration -'
+            key_config_start = '- active config'
             rgx_config_entry = re.compile(r'\s+\([^)]+\)\s+(\S+)=(\S+)')
             in_config = False
             for line in open(logfile, encoding=self.get_encoding(logfile)):
