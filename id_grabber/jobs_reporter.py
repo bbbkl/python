@@ -77,11 +77,32 @@ class PerformanceTrace:
                 return get_datetime(line)
         return None
     
+    def get_start_timepoint(self):
+        """get start timepoint of job"""
+        return get_datetime(self._lines[0])
+    
+    def find_result_received(self):
+        """get line indox with 'DEF_APSCommandSetServerState______ ResultReceived', None otherwise"""
+        for idx in range(-1, -len(self._lines), -1):
+            if self._lines[idx].find('ResultReceived') != -1:
+                return idx
+        return None
+    
+    def get_last_line_idx(self):
+        """get line index of last line, maybe skip queue cancel line"""
+        idx = self.find_result_received()
+        if idx:
+            return idx
+        idx = -1
+        if self._lines[-1].find('checkForCancelCommandQueue') != -1 and len(self._lines) > 1:
+            idx = -2
+        return idx
+    
     def start_to_end(self):
         start = get_datetime(self._lines[0])
         mid1 = self.get_mid1()
         mid2 = self.get_mid2()
-        end = get_datetime(self._lines[-1])
+        end = get_datetime(self._lines[self.get_last_line_idx()])
         if mid1 is None: mid1 = start
         if mid2 is None: mid2 = end
         startup = (mid1 - start).total_seconds()
@@ -91,7 +112,7 @@ class PerformanceTrace:
     
     def elapsed_total(self):
         start = get_datetime(self._lines[0])
-        end = get_datetime(self._lines[-1])
+        end = get_datetime(self._lines[self.get_last_line_idx()])
         diff = end - start
         return diff.total_seconds()
             
@@ -123,7 +144,8 @@ def show_report(performance_items, stream=sys.stdout):
     
     for idx, item in enumerate(performance_items):  
         line = re.sub(r'[^\x00-\x7F]', '', str(item)) # strip non ascii characters
-        stream.write("%02d %s: %s %s\n%s\n" % (idx, item.get_type(), item.elapsed_total(), item.start_to_end(), line))
+        stream.write("%02d %s: %s %s %s\n%s\n" % (idx, item.get_type(), item.elapsed_total(), 
+                                                  item.start_to_end(), item.get_start_timepoint(), line))
 
 def test_encoding(message_file):
     """check for file encoding"""
@@ -144,7 +166,6 @@ def test_encoding(message_file):
 
 def performance_report(logfile, mode_52):
     """logfile and grep performance of single / full optimization"""
-     
     code = test_encoding(logfile)
     
     rgx_start = re.compile(r"^.*Change job number")
@@ -179,6 +200,10 @@ def performance_report(logfile, mode_52):
     
     perf_item = None
     for line in open(logfile, encoding=code):
+        # skip nul nul nul lines
+        if len(line) > 0 and line[0] == '\0':
+            continue
+        
         for rgx in rgx_all: 
             hit = rgx.search(line)
             if hit:            
@@ -258,9 +283,12 @@ def batch_run(dirname, mode_52):
     logfiles = glob(dirname + "/*.log")
     for logfile in logfiles:
         report_data = performance_report(logfile, mode_52)
+        dirname = os.path.dirname(logfile)
+        name = os.path.basename(logfile)
         
-        out = logfile.replace('opt-production-APS1', 'jobs')
-        out = out.replace('.log', '.txt')
+        name = name.replace('opt-production-APS1', 'jobs')
+        name = name.replace('.log', '.txt')
+        out = os.path.join(dirname, name)
         stream = open(out, 'w')
         show_report(report_data, stream)
         stream.close()
