@@ -16,7 +16,7 @@ from glob import glob
 VERSION = '0.1'
 
 def get_job(line):
-    hit = re.search('MSG DEF_APSCommandSetServerState______ Warning mbjob00004.*\D(\d+)$', line)
+    hit = re.search(r'MSG DEF_APSCommandSetServerState______ Warning mbjob00004.*\D(\d+)$', line)
     if hit:
         return int(hit.group(1))
     hit = re.search(r"(job number=|job no=|jobnr\:\s+)(\d+)", line)
@@ -31,6 +31,7 @@ def get_datetime(line):
     return None
 
 class PerformanceTrace:
+    """one job item"""
     def __init__(self, start_line, frontlines=None):
         self._lines = []
         if frontlines is not None:
@@ -39,20 +40,20 @@ class PerformanceTrace:
         self._job = None
         for line in self._lines:
             self.check_for_job(line)
-    
+
     def line_count(self):
         return len(self._lines)
-    
+
     def add(self, line):
         self._lines.append(line)
         if self._job is None:
             self.check_for_job(line)
-            
+
     def check_for_job(self, line):
         job = get_job(line)
         if job is not None:
             self._job = job
-    
+
     def get_type(self):
         for line in self._lines:
             if line.find('calcCtp')!=-1 or line.find('CTP')!=-1:
@@ -64,30 +65,30 @@ class PerformanceTrace:
                line.find('Optimization finished sync done')!=-1:
                 return 'sync'
         return 'unknown'
-    
+
     def get_mid1(self):
         for line in self._lines:
             if line.find('buildObjectModel')!=-1:
                 return get_datetime(line)
         return None
-    
+
     def get_mid2(self):
         for line in self._lines:
             if line.find('Sent')!=-1:
                 return get_datetime(line)
         return None
-    
+
     def get_start_timepoint(self):
         """get start timepoint of job"""
         return get_datetime(self._lines[0])
-    
+
     def find_result_received(self):
         """get line indox with 'DEF_APSCommandSetServerState______ ResultReceived', None otherwise"""
         for idx in range(-1, -len(self._lines), -1):
             if self._lines[idx].find('ResultReceived') != -1:
                 return idx
         return None
-    
+
     def get_last_line_idx(self):
         """get line index of last line, maybe skip queue cancel line"""
         idx = self.find_result_received()
@@ -97,28 +98,30 @@ class PerformanceTrace:
         if self._lines[-1].find('checkForCancelCommandQueue') != -1 and len(self._lines) > 1:
             idx = -2
         return idx
-    
+
     def start_to_end(self):
         start = get_datetime(self._lines[0])
         mid1 = self.get_mid1()
         mid2 = self.get_mid2()
         end = get_datetime(self._lines[self.get_last_line_idx()])
-        if mid1 is None: mid1 = start
-        if mid2 is None: mid2 = end
+        if mid1 is None:
+            mid1 = start
+        if mid2 is None:
+            mid2 = end
         startup = (mid1 - start).total_seconds()
         mid = (mid2 - mid1).total_seconds()
         listener = (end - mid2).total_seconds()
         return (int(startup), int(mid), int(listener))
-    
+
     def elapsed_total(self):
         start = get_datetime(self._lines[0])
         end = get_datetime(self._lines[self.get_last_line_idx()])
         diff = end - start
         return diff.total_seconds()
-            
+
     def job(self):
         return self._job
-        
+
     def __str__(self):
         return ''.join(self._lines)
 
@@ -126,7 +129,7 @@ def have_change_job_line(logfile, code):
     for line in open(logfile, encoding=code):
         if re.search(r"^.*Change job number", line):
             return True
-    return False 
+    return False
 
 def show_report(performance_items, stream=sys.stdout):
     timeToItem = {}
@@ -134,47 +137,47 @@ def show_report(performance_items, stream=sys.stdout):
         secs = int(item.elapsed_total())
         timeToItem.setdefault(secs, [])
         timeToItem[secs].append(item)
-    
+
     stream.write('#total: %d\n' % len(performance_items))
     if len(timeToItem) > 0:
         stream.write("\tseconds: #items\n")
     for secs in sorted(timeToItem):
-        stream.write("\t%4d: %4d\n" % (secs, len(timeToItem[secs]))) 
+        stream.write("\t%4d: %4d\n" % (secs, len(timeToItem[secs])))
     print()
-    
-    for idx, item in enumerate(performance_items):  
+
+    for idx, item in enumerate(performance_items):
         line = re.sub(r'[^\x00-\x7F]', '', str(item)) # strip non ascii characters
-        stream.write("%02d %s: %s %s %s\n%s\n" % (idx, item.get_type(), item.elapsed_total(), 
+        stream.write("%02d %s: %s %s %s\n%s\n" % (idx, item.get_type(), item.elapsed_total(),
                                                   item.start_to_end(), item.get_start_timepoint(), line))
 
 def test_encoding(message_file):
     """check for file encoding"""
     encodings = ["UTF-8", "ISO-8859-1", "latin-1"]
-    
+
     if not os.path.exists(message_file):
         raise FileNotFoundError(message_file)
-    
+
     for item in encodings:
         try:
-            for line in open(message_file, encoding=item):
+            for _ in open(message_file, encoding=item):
                 pass
             return item
-        except:
+        except _:
             pass
-        
-    raise ("Cannot get right encoding, tried %s" % str(encodings))
+
+    raise "Cannot get right encoding, tried %s" % str(encodings)
 
 def performance_report(logfile, mode_52):
     """logfile and grep performance of single / full optimization"""
     code = test_encoding(logfile)
-    
+
     rgx_start = re.compile(r"^.*Change job number")
     if not have_change_job_line(logfile, code):
         rgx_start = re.compile(r"^.*SERVER_STATE\: Receiving Ground Data")
-        
+
     if mode_52:
         rgx_start = re.compile(r"receive Order!")
-    
+
     mid_expressions = [r"SERVER_STATE",
                        r'buildObjectModel Modelltyp',
                        r'-- calcAll --',
@@ -182,33 +185,34 @@ def performance_report(logfile, mode_52):
                        r'begin syncronize, job no',
                        r'Decomposition\s+\|',
                        r'ApsModelerIlo\:\:createIlogModel',
+                       r'end ApsSchedulerCPO_optimalDemandTimes',
                        r'Sen[dt].*Solution to ERP',
                        r'DEF_APSCommandSetServerState______',
                        r'end syncronize',
                        r'elapsed milliseconds since last job start',
                        ]
     rgx_mid = re.compile(r"^.*(%s)" % '|'.join(mid_expressions))
-    
+
     rgx_end = re.compile(r'.*Send CTP\-Prod Solution to ERP.*')
-    
+
     rgx_all = [rgx_start, rgx_mid]
-    
+
     performance_items = []
     job_to_item = {}
     job_to_lines = {}
     last_job_no = None
-    
+
     perf_item = None
     for line in open(logfile, encoding=code):
         # skip nul nul nul lines
         if len(line) > 0 and line[0] == '\0':
             continue
-        
-        for rgx in rgx_all: 
+
+        for rgx in rgx_all:
             hit = rgx.search(line)
-            if hit:            
+            if hit:
                 job_no = get_job(line)
-                
+
                 # in 5.2 we have no real start rgx and need to detect end of job
                 if mode_52 and rgx_end.search(line):
                     if perf_item is None:
@@ -218,10 +222,10 @@ def performance_report(logfile, mode_52):
                     performance_items.append(perf_item)
                     perf_item = None
                     break
-                
+
                 if perf_item is None:
                     perf_item = PerformanceTrace(line)
-                    
+
                 elif rgx == rgx_start:
                     if perf_item is not None:
                         if perf_item.line_count()==1 and mode_52:
@@ -251,24 +255,24 @@ def performance_report(logfile, mode_52):
                             job_to_lines[job_no].append(line)
                             last_job_no = job_no
                 break
-                        
+
     if perf_item is not None:
         performance_items.append(perf_item)
-        
+
     return performance_items
-        
+
 def get_duration(tp1, tp2):
     h1, m1, s1 = [int(x) for x in re.search(r'(\d{2}):(\d{2}):(\d{2})', tp1).groups()]
     h2, m2, s2 = [int(x) for x in re.search(r'(\d{2}):(\d{2}):(\d{2})', tp2).groups()]
-    return h2 * 60 * 60 + m2 * 60 + s2 - (h1 * 60 * 60 + m1 * 60 + s1) 
-        
+    return h2 * 60 * 60 + m2 * 60 + s2 - (h1 * 60 * 60 + m1 * 60 + s1)
+
 def queue_log_report(filename):
     rgx = re.compile(r'(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}:\d{2})\s+(\S+).*#(\d+).*(p_.*\.p).*(beendet|beginnt)')
     prev_tp = prev_job_id = prev_dt =None
     for line in open(filename):
         hit = rgx.search(line)
         if hit:
-            dt, tp, who, job_id, prg, what = hit.groups()
+            dt, tp, who, job_id, prg, _ = hit.groups()
             if prev_dt != dt:
                 print("\n\n%s" % dt)
                 prev_dt = dt
@@ -277,7 +281,7 @@ def queue_log_report(filename):
                 print("job %s  duration=%02d start=%s end=%s (%s) %s" % (job_id, duration, prev_tp, tp, prg, who))
             prev_tp = tp
             prev_job_id = job_id
-    
+
 def batch_run(dirname, mode_52):
     """for each logfile within dirname do performance report"""
     logfiles = glob(dirname + "/*.log")
@@ -285,7 +289,7 @@ def batch_run(dirname, mode_52):
         report_data = performance_report(logfile, mode_52)
         dirname = os.path.dirname(logfile)
         name = os.path.basename(logfile)
-        
+
         name = name.replace('opt-production-APS1', 'jobs')
         name = name.replace('.log', '.txt')
         out = os.path.join(dirname, name)
@@ -297,7 +301,7 @@ def parse_arguments():
     """parse arguments from command line"""
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
-    
+
     parser.add_argument('logfile', metavar='logfile', help='input logfile')
     parser.add_argument('--queue_log', action="store_true", # or store_false
                         dest="queue_log", default=False, # negative store value
@@ -313,17 +317,18 @@ def main():
     """main function"""
     args = parse_arguments()
     filename = args.logfile
-    
+
     if args.queue_log:
         queue_log_report(filename)
         return 0
-    
+
     if args.batch_run:
         batch_run(filename, args.mode_52)
-        return
-    
+        return 0
+
     report_data = performance_report(filename, args.mode_52)
     show_report(report_data)
+    return 0
 
 if __name__ == "__main__":
     try:
