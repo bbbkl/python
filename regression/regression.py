@@ -25,12 +25,12 @@ VERSION = '1.0'
 class Regression:
     """main regression class, which perforce a regression"""
     develop = False
-    
+
     def __init__(self, configuration_file):
         self.config = RegressionConfig(configuration_file)
         self.regression_dir = None
         self.regression_messagefiles = []
-        
+
     @staticmethod
     def startup_check(config_file, ref_exe_check):
         msg = ""
@@ -56,39 +56,39 @@ class Regression:
                     msg += "\n\t" + "no regression_exe (%s)" % path_to_check
         if msg:
             raise RegressionException("startup check failed" + msg)
-          
+
     def get_id(self):
         return self.config.get_headline()
-    
+
     def get_items(self):
         return self.regression_messagefiles
-        
+
     def get_report_file(self):
         return os.path.join(self.regression_dir, "regression_report.txt")
-    
+
     def get_stdout_file(self):
         return os.path.join(self.regression_dir, "regression.stdout.txt")
-    
+
     def create_report(self):
         """create report for mail"""
         report = ""
         for item in self.regression_messagefiles:
             report += "\n" + item.create_report() + "\n"
         return report
-    
+
     def get_regression_timepoint(self):
         """regression date is creation time of reference directory"""
         timepoint = os.stat(self.regression_dir).st_ctime
         dt = datetime.datetime.fromtimestamp(timepoint)
         return dt.isoformat()
-    
+
     def create_summary(self, duration):
         """create summary = id + date + list of non-ok messagesfiles and their result"""
         summary = "Regression ID=%s" % self.config.get_headline()
         summary += " started=%s" % self.get_regression_timepoint()
         summary += " elapsed_time=%s" % duration
         summary += " result=%s" % self.get_result()
-        summary += "\n%s" % self.regression_dir 
+        summary += "\n%s" % self.regression_dir
         summary += "\n%s" % self.get_optimizer_version(self.config.get_regression_exe())
 
         summary += "\nnumber of messagefiles=%d" % len(self.regression_messagefiles)
@@ -98,7 +98,7 @@ class Regression:
                 summary += "\n\t%s %s" % (item_result, item.get_messagefile())
         summary += "\n\n"
         return summary
-    
+
     def prepend_to_report(self, message):
         fn = self.get_report_file()
         lines = open(fn).readlines()
@@ -106,13 +106,13 @@ class Regression:
             stream.write("%s\n" % message)
             for line in lines:
                 stream.write(line)
-    
+
     def get_result(self):
         result = Regr.OK
         for item in self.get_items():
             result = max(result, item.get_result())
         return result
-    
+
     def copy_regression_exe(self):
         src = self.config.get_src_exe()
         dst = self.config.get_regression_exe()
@@ -122,7 +122,7 @@ class Regression:
             if src and not os.path.exists(src):
                 raise RegressionException("no src executable '%s'" % src)
             raise RegressionException("no regression executable '%s'" % dst)
-        
+
     def do_regression(self):
         try:
             self.copy_regression_exe()
@@ -142,7 +142,7 @@ class Regression:
             print(ex)
             subject = "regression %s result=FATAL_FAIL" % self.get_id()
             send_regression_mail(subject, str(ex), self.config.get_recipients(), self.develop)
-            
+
 
     def set_messagefiles(self, regression_dir, expect_reference=True):
         """for each *.dat file within regression dir create one RegressionMessageFile"""
@@ -165,7 +165,7 @@ class Regression:
                 dst = os.path.join(dst_root, item)
                 os.symlink(src, dst)
         return regression_dir
-    
+
     def try_copy_masterconfig(self, config, reference_dir):
         src = config.get_masterconfig()
         if src:
@@ -194,7 +194,7 @@ class Regression:
         self.set_messagefiles(self.regression_dir, expect_reference=False)
         for item in self.get_items():
             timepoint_start = datetime.datetime.now().timestamp()
-            self.call_optimizer(cfg.get_ref_exe(), cfg.get_params(), 
+            self.call_optimizer(cfg.get_ref_exe(), cfg.get_params(),
                                 [item,], create_reference=True)
             item.rename_as_reference(timepoint_start)
 
@@ -206,7 +206,7 @@ class Regression:
             output = str(p.stdout)
             hit = re.search(r'APS-Server version:\s+(\S+).*Revision Number:(\S+(?: [a-zA-Z]+)?)', output)
             if hit:
-                return ("version=%s revision=%s" % (hit.group(1), hit.group(2)))
+                return "version=%s revision=%s" % (hit.group(1), hit.group(2))
             return output[2:-1].replace(r'\r\n', '\n')
         except:
             return "version=FAILED_TO_EXTRACT (exe=%s)" % exe
@@ -226,7 +226,9 @@ class Regression:
                 run(cmd, stdout=outstream, stderr=outstream)
             time_end = datetime.datetime.now()
             duration += time_end - time_start
-            if not create_reference:
+            if create_reference:
+                os.remove(self.get_stdout_file())
+            else:
                 message_file.rename_result_logfile()
                 with open(self.get_report_file(), "a") as report:
                     report.write("\n%s\n" % message_file.create_report())
@@ -240,7 +242,7 @@ class Regression:
         body = self.create_summary(duration)
         self.prepend_to_report(body)
         body += self.create_report()
-        send_regression_mail(subject, body, self.config.get_recipients())        
+        send_regression_mail(subject, body, self.config.get_recipients())
 
 def parse_arguments():
     """parse commandline arguments"""
@@ -266,20 +268,20 @@ def main():
 
     try:
         Regression.startup_check(args.config_file, args.create_reference)
-        
+
         regression = Regression(args.config_file)
         #summary = "xxx"
         #summary += "\n%s" % regression.get_optimizer_version(regression.config.get_regression_exe())
         #summary += "\nnumber of messagefiles=%d" % 42
         #print(summary)
         #return
-        
+
         if args.create_reference or args.create_reference_only:
             regression.create_reference()
             if args.create_reference_only:
                 return
         regression.do_regression()
-        
+
         """
         # develop
         regression.regression_dir = r"D:\work\bega\20181127\bega_ref_20181127.01"
@@ -292,7 +294,7 @@ def main():
         print(ex)
         raise ex
     return
-        
+
 if __name__ == "__main__":
     try:
         main()
