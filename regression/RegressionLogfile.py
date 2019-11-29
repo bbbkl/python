@@ -11,7 +11,7 @@ from datetime import datetime
 import re
 import os
 from RegressionResultCodes import Regr
-import sys
+
 
 VERSION = '1.0'
 
@@ -32,7 +32,7 @@ class RegressionLogfile:
     def __init__(self, reference_file):
         self.reference_file = reference_file
         self.encoding_cache = {}
-    
+
     def __str__(self):
         msg = "RegressionLogfile\n\tref='%s %d'\n\tres='%s %d'" % \
             (self.get_reference_file(),
@@ -47,7 +47,7 @@ class RegressionLogfile:
         for key in config:
             msg += "\n\tc-o-n-f-i-g %s=%s" % (key, config[key])
         return msg
-      
+
     def create_report(self):
         ref, res = self.get_reference_file(), self.get_result_file()
         ref_secs = self.get_total_seconds(ref)
@@ -69,11 +69,11 @@ class RegressionLogfile:
                 report += "\n\t\t%s" % item
         wcnt_ref, wcnt_res = len(self.get_warnings(ref)), len(self.get_warnings(res))
         if wcnt_ref != wcnt_res:
-            report += "\n\t#warnings differs #ref=%d #res=%d" % (wcnt_ref, wcnt_res) 
+            report += "\n\t#warnings differs #ref=%d #res=%d" % (wcnt_ref, wcnt_res)
         report += self.get_config_diff()
         report += self.get_key_value_diffs()
         return report
-    
+
     def get_config_diff(self):
         diff = ""
         if os.path.exists(self.get_reference_file()) and os.path.exists(self.get_result_file()):
@@ -90,7 +90,7 @@ class RegressionLogfile:
             if diff:
                 diff = "\n\tconfiguration differs" + diff
         return diff
-    
+
     def get_reference_file(self):
         return self.reference_file
     def get_result_file(self):
@@ -101,15 +101,15 @@ class RegressionLogfile:
         """dummy implementation so far"""
         ref, res = self.get_reference_file(), self.get_result_file()
         if self.get_errors(ref) or self.get_errors(res):
-            return Regr.FAILED if self.get_errors(res) else Regr.DIFF 
+            return Regr.FAILED if self.get_errors(res) else Regr.DIFF
         if len(self.get_warnings(ref)) < len(self.get_warnings(res)):
             return Regr.DIFF
         if self.get_key_value_diffs():
             return Regr.DIFF
         return Regr.OK
-    
+
     def get_active_conifg(self, logfile):
-        result = {} 
+        result = {}
         if os.path.exists(logfile):
             key_config_start = '- active config'
             rgx_config_entry = re.compile(r'\s+\([^)]+\)\s+(\S+)=(\S+)')
@@ -124,20 +124,21 @@ class RegressionLogfile:
                     break
                 in_config = line.find(key_config_start) != -1
         return result
-    
+
     def get_errors(self, logfile):
         candidates = self.get_pattern('Error', logfile)
         false_positives = ["'solthrowonerror'", 'SolThrowOnError=1', '?ERROR?']
         return self.filter_false_positives(candidates, false_positives)
-        
+
     def get_warnings(self, logfile):
         candidates = self.get_pattern('Warning', logfile)
         false_positives = []
         return self.filter_false_positives(candidates, false_positives)
 
-    def get_keys(self):
-        """watchout for these keys within logfile""" 
-        return ['decompositions all/unexpected:', 
+    @classmethod
+    def get_keys(cls):
+        """watchout for these keys within logfile"""
+        return ['decompositions all/unexpected:',
                 'no solution:',
                 'early:',
                 'in time:',
@@ -145,23 +146,25 @@ class RegressionLogfile:
                 'Lateness total/avg/max:',
                 'Earliness total/avg/max:']
 
-    def make_key_val_rgx(self, keys):
-        pattern = "^\s*(" + keys[0]
+    @classmethod
+    def make_key_val_rgx(cls, keys):
+        pattern = r"^\s*(" + keys[0]
         for key in keys:
             pattern += "|%s" % key
         pattern += r")\s+(\d.*)$"
         return re.compile(pattern)
 
-    def pretty_val(self, val):
+    @classmethod
+    def pretty_val(cls, val):
         hit = re.search(r'(\t|\s{2})', val)
         while hit:
-            val = val.replace(hit.group(1), ' ') 
+            val = val.replace(hit.group(1), ' ')
             hit = re.search(r'(\t|\s{2})', val)
         val = val.replace('( ', '(')
         return val
 
     def get_key_value_pairs(self, logfile):
-        result = {} 
+        result = {}
         keys = self.get_keys()
         rgx = self.make_key_val_rgx(keys)
         if os.path.exists(logfile):
@@ -178,7 +181,7 @@ class RegressionLogfile:
         for key in keys:
             result[key] = 'NOT_FOUND'
         return result
-    
+
     def get_key_value_diffs(self):
         diff = ""
         if os.path.exists(self.get_reference_file()) and os.path.exists(self.get_result_file()):
@@ -190,7 +193,7 @@ class RegressionLogfile:
             if diff:
                 diff = "\n\tkey value pairs differ (ref <-> res)" + diff
         return diff
-    
+
     def filter_false_positives(self, candidates, false_positives):
         result = []
         for item in candidates:
@@ -203,9 +206,10 @@ class RegressionLogfile:
                 result.append(item)
         return self.truncate_timestamp(result)
 
-    def truncate_timestamp(self, candidates):
+    @classmethod
+    def truncate_timestamp(cls, candidates):
         result = []
-        rgx_timestamp = re.compile('^[^|]*\|(.*)')
+        rgx_timestamp = re.compile(r'^[^|]*\|(.*)')
         for line in candidates:
             hit = rgx_timestamp.search(line)
             if hit:
@@ -223,7 +227,7 @@ class RegressionLogfile:
                 if hit:
                     result.append(line[:-1])
         return result
-    
+
     def get_avg_ctp_msecs(self, logfile):
         """get avg ctp execution time in msecs or None"""
         if logfile is None or not os.path.exists(logfile):
@@ -235,16 +239,16 @@ class RegressionLogfile:
             if hit:
                 if start_tp is None:
                     start_no, start_tp = map(int, hit.groups())
-                end_no, end_tp = map(int, hit.groups())    
+                end_no, end_tp = map(int, hit.groups())
         if start_tp is None:
             return None
         return round((end_tp - start_tp) / (end_no- start_no + 1))
-    
+
     def get_total_seconds(self, logfile):
         """differnce last - first timestamp"""
         if logfile is None or not os.path.exists(logfile):
             return -1
-        rgx_time = re.compile('^(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\:\d{2}\:\d{2})')
+        rgx_time = re.compile(r'^(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\:\d{2}\:\d{2})')
         ts1 = ts2 = None
         for line in open(logfile, encoding=self.get_encoding(logfile)):
             hit = rgx_time.search(line)
@@ -260,33 +264,33 @@ class RegressionLogfile:
         tp2 = get_datetime_from_string(ts2)
         delta = tp2 - tp1
         return delta.total_seconds()
-     
+
     def get_encoding(self, filename):
         """check which encoding is used within given file"""
         if not filename in self.encoding_cache:
             self.encoding_cache[filename] = test_encoding(filename)
         return self.encoding_cache[filename]
-     
+
 def test_encoding(message_file):
     """check for file encoding"""
     encodings = ["UTF-8", "ISO-8859-1", "latin-1"]
-    
+
     if not os.path.exists(message_file):
         raise FileNotFoundError(message_file)
-    
+
     for item in encodings:
         try:
-            for line in open(message_file, encoding=item):
+            for _ in open(message_file, encoding=item):
                 pass
             return item
-        except:
+        except _:
             pass
-        
-    raise ("Cannot get right encoding, tried %s" % str(encodings))
-     
+
+    raise "Cannot get right encoding, tried %s" % str(encodings)
+
 def parse_arguments():
     """parse commandline arguments"""
-    #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION    
+    #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('reference_file', metavar='reference_file', help='input regression reference logfile')
@@ -300,8 +304,8 @@ def main():
     print(item)
     print("result=%s" % item.get_result())
     #print("avg ctp duration=%s msecs" % item.get_avg_ctp_msecs(args.reference_file))
-    print(item.create_report())    
-    
+    print(item.create_report())
+
 if __name__ == "__main__":
     try:
         main()
