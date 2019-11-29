@@ -9,6 +9,17 @@
 import sys
 import re
 
+def diff_activities(filename1, filename2):
+    proc_ids = set()
+    with open(filename1) as file1, open(filename2) as file2:
+        for line1, line2 in zip(file1, file2):
+            if line1 != line2:
+                hit = re.search(r"^(\S+)", line1)
+                if hit:
+                    proc_ids.add(hit.group(1))
+    return proc_ids
+
+
 def get_proc_to_line(filename):
     """read result file, return dict: proc_id -> line"""
     result = {}
@@ -27,6 +38,8 @@ def get_proc_to_line(filename):
 
 def get_proc_ids_which_differ(filename1, filename2):
     """get proc ids which exist in both files but have different content line"""
+    if filename1.find("activities") != -1:
+        return diff_activities(filename1, filename2)
     result = []
     dict1, ordered_ids1 = get_proc_to_line(filename1)
     dict2               = get_proc_to_line(filename2)[0]
