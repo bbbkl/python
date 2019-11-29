@@ -6,7 +6,6 @@
     take collector export as input and grep related process ids for given id of type xxx
 """
 
-import sys
 import re
 import os.path
 from argparse import ArgumentParser
@@ -109,7 +108,7 @@ def grep_proc_ids_for_material_id(filename, material_id):
             hit_material = True
             continue
         hit_process = hit_material = None
-    
+
     return process_ids
 
 def grep_proc_begin_end(filename, process_id):
@@ -126,10 +125,10 @@ def grep_proc_begin_end(filename, process_id):
     output_mode = False
 
     for line in open(filename):
-        if output_mode == False and rgx_on.search(line):
+        if not output_mode and rgx_on.search(line):
             output_mode = True
 
-        if output_mode == True:
+        if output_mode:
             output.write(line)
             if rgx_off.search(line):
                 output_mode = False
@@ -153,11 +152,36 @@ def grep_proc_ids_subproc_own_duedate(messagefile):
             dataline = ''
         else:
             dataline = line
-    return proc_ids 
+    return proc_ids
 
-def grep_ordered_proc_ids(logfile):
+def grep_ordered_proc_ids(filename):
+    _, ext = os.path.splitext(filename)
+    if ext == ".log":
+        res =grep_ids_logfile(filename)
+    elif ext == ".dat":
+        res = grep_ids_messagefile(filename)
+    else:
+        raise "don't know how to handle extension='%s'" % ext
+    return res
+
+def grep_ids_messagefile(messagefile):
+    """grep proc ids out of given messagefile"""
+    proc_ids = set()
+    data = None
+    rgx = re.compile('^2\t370')
+    for line in open(messagefile):
+        if rgx.search(line) and data:
+            tokens = data.split('\t')
+            if len(tokens) >= 3:
+                proc_ids.add(tokens[2])
+            data = None
+        else:
+            data = line
+    return proc_ids
+
+def grep_ids_logfile(logfile):
     """for given logfile get ordered process ids"""
-    # 5.2 line:   46  158 process LA-01194016          dispolevel:  1 
+    # 5.2 line:   46  158 process LA-01194016          dispolevel:  1
     # 6.1 line: begin SolGoalSchedulePrioI::execute scheduling process: p98738 LA-00016297
     proc_ids = []
     rgx1 = re.compile(r"^\s*\d+\s+\d+\s+process\s+(\S+)\s+dispolevel")
@@ -171,6 +195,7 @@ def grep_ordered_proc_ids(logfile):
             if not proc_id in proc_ids:
                 proc_ids.append(proc_id)
     return proc_ids
+
 
 def grep_proc_ids_before_timepoint(filename, timepoint):
     """expected input is a headporc result csv file. Grep all proc ids with end time < timepoint"""
@@ -198,11 +223,11 @@ def parse_arguments():
                       dest="mat_id", default='',
                       help="grep process ids of processes which consume or produce material id, input message file")
     parser.add_argument('--partproc_duedate', action="store_true", # or store false)
-                        dest='partproc_duedate', default=False, 
+                        dest='partproc_duedate', default=False,
                         help="grep ids of processes which contain a partproc with own duedate, input message file")
 
     parser.add_argument('--end_before_timepoint', metavar='string',
-                        dest='end_before_timepoint', default='', 
+                        dest='end_before_timepoint', default='',
                         help="grep ids of processes which end before given timepoint e.g. '2018-11-15 14:10:00', input headproc result csv file")
     return parser.parse_args()
 
@@ -215,29 +240,29 @@ def main():
         process_ids = grep_proc_ids_for_resource_id(filename, args.res_id)
         print(','.join(process_ids))
         return 0
-    
+
     if args.mat_id != '':
         process_ids = grep_proc_ids_for_material_id(filename, args.mat_id)
         print(','.join(process_ids))
         return 0
-    
+
     if args.partproc_duedate:
         process_ids = grep_proc_ids_subproc_own_duedate(filename)
         print(','.join(process_ids))
         return 0
-    
+
     if args.end_before_timepoint:
         process_ids = grep_proc_ids_before_timepoint(filename, args.end_before_timepoint)
         print(','.join(process_ids))
         return 0
-    
+
     process_ids = grep_ordered_proc_ids(filename)
-    
+
     print(','.join(process_ids))
     #print('#proc_ids=%d' % len(process_ids))
 
     #grep_proc_begin_end(filename, resource_id)
-
+    return 0
 
 if __name__ == "__main__":
     try:
