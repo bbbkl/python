@@ -30,7 +30,7 @@ def get_opt_number(workdir):
 def nexus_upload(src, version_id):
     file_to_upload = os.path.join(os.path.dirname(src), 'optsrv64.zip')
     shutil.copyfile(src, file_to_upload)
-    cmd = [sys.executable, '-m', 'pa_nexus', 'upload', '-a', 'optsrv64.zip', '-g', 'com.proalpha.optimizer', \
+    cmd = [sys.executable, '-m', 'pa_nexus', 'upload', '-a', 'optsrv64', '-g', 'com.proalpha.optimizer', \
             '-v', version_id, '-f', file_to_upload, '-u', 'Jenkins.PPS', '-p', 'nexus']
     
     try:
