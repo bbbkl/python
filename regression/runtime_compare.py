@@ -229,17 +229,17 @@ def performance_report(logfile, mode_52):
                             job_to_lines[job_no].append(line)
                             last_job_no = job_no
                 break
-                        
+
     if perf_item is not None:
         performance_items.append(perf_item)
         
     return performance_items
-        
+
 def get_duration(tp1, tp2):
     h1, m1, s1 = [int(x) for x in re.search(r'(\d{2}):(\d{2}):(\d{2})', tp1).groups()]
     h2, m2, s2 = [int(x) for x in re.search(r'(\d{2}):(\d{2}):(\d{2})', tp2).groups()]
     return h2 * 60 * 60 + m2 * 60 + s2 - (h1 * 60 * 60 + m1 * 60 + s1) 
-            
+  
 def read_times(logfile):
     times = {}    
     times.setdefault('ctp', [])
@@ -248,17 +248,15 @@ def read_times(logfile):
 
     with open(logfile, "rb") as f:
         first = f.readline() 
-                
-        f.seek(-2, os.SEEK_END)
-        linesToSkip=2
-        while True:  
-            if f.read(1) == b"\n":
-                linesToSkip -= 1
-                if linesToSkip < 0:
-                    break
-            f.seek(-2, os.SEEK_CUR) 
-            
-        last = f.readline() 
+
+        f.seek(-2, os.SEEK_END)        
+        last = f.readline()
+        i = 2
+
+        while get_datetime(last.decode()) is None:            
+            f.seek(-2 * i, os.SEEK_END)
+            i = i + 1
+            last = f.readline()
         times['total'] = (get_datetime(last.decode()) - get_datetime(first.decode())).total_seconds()
 
     report_data = performance_report(logfile, False) # mode_52 = yes / no 
@@ -409,18 +407,16 @@ def parse_arguments():
     """parse arguments from command line"""
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
-    
-    parser.add_argument('dir', metavar='dir', help='input directory')
-    
+    parser.add_argument('dir', help = 'input directory, compare .reference and .result files')
+	
     return parser.parse_args()
 
 def main():
     """main function"""
     args = parse_arguments()
     dir = args.dir
-    
     result = runtime_compare(dir)
-    
+   	
     print(result)
     write_result_file(result, dir + "\\runtime_compare.csv")
 
