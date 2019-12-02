@@ -283,7 +283,7 @@ def test_encoding(message_file):
             for _ in open(message_file, encoding=item):
                 pass
             return item
-        except _:
+        except:
             pass
 
     raise "Cannot get right encoding, tried %s" % str(encodings)
