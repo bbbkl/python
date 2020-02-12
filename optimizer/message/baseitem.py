@@ -2,12 +2,12 @@
 # file: BaseItem.py
 #
 # description
-from mailbox import fcntl
 """\n\n
     Base class for activity, ...
 """
 
 from command_mapper import CommandMapper
+import re
 
 class BaseItem(object):
     """Base item which holds tokens and command"""
@@ -108,8 +108,28 @@ class BaseItem(object):
         return text
     
     @classmethod 
+    def format_check(cls, tokens, descriptions):
+        """check that a special field fits expected format"""
+        checks = {'process_area_orig' : '(""|[A-Z]{3})'}
+        for key in checks:
+            if key in descriptions:
+                pos = descriptions.index(key)
+                if pos > len(tokens):
+                    continue
+                token = tokens[pos]
+                if not re.match(checks[key], token):
+                    classname = cls.__name__
+                    print("\nERROR bad line of %s, %s='%s' does not fit format '%s', line='%s'" % \
+                          (classname, key, token, checks[key], '\t'.join(tokens)))
+                    return 0
+        return 1
+    
+    @classmethod 
     def check_descriptions_tokens_mismatch(cls, descriptions, tokens):
         """warn about a token / description length mismatch one"""
+        if not cls.format_check(tokens, descriptions):
+            return
+        
         diff = len(descriptions) - len(tokens)
         if diff == 0:
             return

@@ -25,4 +25,4 @@ class MServerKennz(BaseItem):
                 'AnzahlAktivitaetenFIX', 'AnzahlArtikel', 'AnzahlArtikelZuordnung', 'AnzahlRess', 'AnzahlRessZuordnung',
                 'AnzahlAuftraege', 'AnzahlProblemAuftraege', 'Verspaehtet', 'Verfrueht', 'Ueberlastet',
                 'Blockgroesse', 'AnzahlBloecke', 'BloeckeMitLoesung', 'Optimierungsnummer',
-                '#Baugruppen', '#BaugruppenMitWT', '#BaugruppenMitWT_verspaetet' ]
+                '#Baugruppen', '#BaugruppenMitWT', '#BaugruppenMitWT_verspaetet', 'total_tardiness' ]
