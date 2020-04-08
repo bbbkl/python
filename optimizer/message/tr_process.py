@@ -76,8 +76,8 @@ class TrProcess(BaseItem):
                 'last_opt_type', 'last_opt_target', 'last_opt_time', 'lot', 'use_due_date',
                 'production_quantity_total', 'BG_ueber_Lager', 'process_area_orig', 'order_state', 'creation_date',
                 'stability', 'age', 'preserve_dynamic_buffer', 'due_date_time' ]
-        
-        
+
+
 class ProcessProd(BaseItem):
     def __init__(self, tokens, command):
         BaseItem.__init__(self, tokens, command)
@@ -104,4 +104,4 @@ class ProcessProd(BaseItem):
             return []
 
         return ['process_area_head', 'process', 'part_process', 'part', 'part_variant', 'lot',
-                'cro', 'reservation', 'mrp_area', 'Anzahl' ]        
+                'cro', 'reservation', 'mrp_area', 'Anzahl', 'ident_act', 'is_continuous']
