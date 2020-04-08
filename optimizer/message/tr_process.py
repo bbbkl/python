@@ -78,7 +78,7 @@ class TrProcess(BaseItem):
                 'stability', 'age', 'preserve_dynamic_buffer', 'due_date_time' ]
 
 
-class ProcessProd(BaseItem):
+class Coverage(BaseItem):
     def __init__(self, tokens, command):
         BaseItem.__init__(self, tokens, command)
 
@@ -97,7 +97,7 @@ class ProcessProd(BaseItem):
 
     @classmethod
     def commands(cls):
-        return ['DEF_ERPCommandcreate_ProcessProd__', ]
+        return ['DEF_ERPCommandcreate_Coverage_____', ] # was create_ProcessProd
 
     def token_descriptions(self):
         if self.mode51():

@@ -46,6 +46,8 @@
 #define DEF_ERPCommandsaveServerKomplett__  144 //!< write status xml files to load at start (as "AfterOptimize") (via menu/p_vopt07.p)
 //#define DEF_ERPCommandloadServerKomplett__  145 //!< inactive, never sent: load status xml files (from "AfterOptimize")
 
+#define DEF_ERPCommandWriteToLog__________  149 //!< write message to optimizer logfile
+
 #define DEF_ERPCommandsetServer___________  150 //!< use the appended general data for members in ApsServer (timestamp, etc.)
 #define DEF_ERPCommandsetJobContext_______  151 //!< set job context (jobnr., dispo thereafter in erp or not, etc.)
 #define DEF_ERPCommandsetJobContextCTP____  152 //!< set job context for ctp (with information about one order)
@@ -176,7 +178,8 @@
 #define DEF_ERPCommandcreate_Overload_Res_  375 //!< used to receive denoted data type (used overload information about resources)
 #define DEF_ERPCommandcreate_Overload_Mat_  380 //!< used to receive denoted data type (used overload information about depots)
 #define DEF_ERPCommandcreate_ProcessCst___  381 //!< used to receive denoted data type (constraint from one process to activity in other process)
-#define DEF_ERPCommandcreate_ProcessProd__  382 //!< used to receive denoted data type (additional part produced by given process)
+#define DEF_ERPCommandcreate_Coverage_____  382 //!< used to receive denoted data type (coverages for a given process)
+          // same as create_ProcessProd__
 
 #define DEF_ERPCommandSetDatabaseTime_____  385 //!< receive denoted timestamp for time axis origin ("now" is 0 here)
 

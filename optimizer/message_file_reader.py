@@ -27,7 +27,7 @@ from message.m_dispobew import M_DispoBew
 from message.xcalendar import S_BetriebKal, M_Kalender, M_KalenderZeit, M_IntKalender, M_KalDatum, UpdateCalendar
 from message.tr_resource import TrResource
 from message.m_resource import M_Resource, M_ResAlt, M_ResAltGroup, UpdateResource
-from message.tr_process import TrProcess, ProcessProd
+from message.tr_process import TrProcess, Coverage
 from message.tr_material import TrMaterial
 from message.tr_constraint import TrConstraint
 from message.tr_processcst import TrProcessCst
@@ -346,7 +346,7 @@ def get_id_to_class_mapping():
                    S_BetriebKal, M_Kalender, M_KalenderZeit, M_IntKalender, 
                    M_KalDatum, UpdateCalendar,
                    TrResource, M_Resource, M_ResAlt, M_ResAltGroup, UpdateResource, 
-                   TrProcess, ProcessProd,
+                   TrProcess, Coverage,
                    TrMaterial, TrConstraint, TrProcessCst, McLager, McCharge, McArt, MRessGruppe,
                    TrTimeConst, 
                    ML_ArtOrt, ML_ArtOrtVar, M_UebOrt, M_UebAdresse, CheckErpID, TrStock, TrStockFromMLArtOrtKomm,
