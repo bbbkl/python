@@ -171,6 +171,8 @@ class Regression:
         if src:
             dst = os.path.join(reference_dir, os.path.basename(src))
             if src != dst:
+                if os.path.exists(dst):
+                    os.remove(dst)
                 shutil.copyfile(src, dst)
             config.set_masterconfig(dst)
 
@@ -191,6 +193,7 @@ class Regression:
         cfg = self.config
         print(cfg.get_ref_exe())
         self.regression_dir = cfg.get_reference_dir()
+        self.try_copy_masterconfig(cfg, self.regression_dir)
         self.set_messagefiles(self.regression_dir, expect_reference=False)
         for item in self.get_items():
             timepoint_start = datetime.datetime.now().timestamp()
