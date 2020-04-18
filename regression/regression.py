@@ -79,8 +79,8 @@ class Regression:
     def get_regression_timepoint(self):
         """regression date is creation time of reference directory"""
         timepoint = os.stat(self.regression_dir).st_ctime
-        dt = datetime.datetime.fromtimestamp(timepoint)
-        return dt.isoformat()
+        dti = datetime.datetime.fromtimestamp(timepoint)
+        return dti.isoformat()
 
     def create_summary(self, duration):
         """create summary = id + date + list of non-ok messagesfiles and their result"""
@@ -100,9 +100,9 @@ class Regression:
         return summary
 
     def prepend_to_report(self, message):
-        fn = self.get_report_file()
-        lines = open(fn).readlines()
-        with open(fn, "w") as stream:
+        file = self.get_report_file()
+        lines = open(file).readlines()
+        with open(file, "w") as stream:
             stream.write("%s\n" % message)
             for line in lines:
                 stream.write(line)
@@ -147,7 +147,7 @@ class Regression:
     def set_messagefiles(self, regression_dir, expect_reference=True):
         """for each *.dat file within regression dir create one RegressionMessageFile"""
         self.regression_messagefiles = []
-        for root, dirs, files in os.walk(regression_dir):
+        for root, _, files in os.walk(regression_dir):
             for item in [x for x in files if os.path.splitext(x)[-1].lower() == '.dat']:
                 msg = os.path.join(root, item)
                 self.regression_messagefiles.append(RegressionMessagefile(msg, expect_reference))
@@ -172,7 +172,7 @@ class Regression:
             dst = os.path.join(reference_dir, os.path.basename(src))
             if src != dst:
                 shutil.copyfile(src, dst)
-            config.add_param('-mcf %s' % dst)
+            config.set_masterconfig(dst)
 
     def get_new_regression_dir(self, reference_dir):
         """get new directory name with refernce_dir as prefix, add unique suffix"""

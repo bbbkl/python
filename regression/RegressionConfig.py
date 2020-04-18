@@ -19,7 +19,7 @@ class RegressionConfig:
         self.token_map = {}
         self.parse_config()
         self.expand_variables()
-        
+
     def parse_config(self):
         key_map = { 'recipients' : 'recipients=',
                    'ref_exe' : 'ref_exe=',
@@ -29,7 +29,7 @@ class RegressionConfig:
                    'params' : 'params=',
                    'masterconfig' : 'masterconfig=',
                    'headline' : 'headline=' }
-        
+
         for line in open(self.configuration_file):
             for key in key_map:
                 hit = re.search('^' + key_map[key] + '(.*)', line)
@@ -38,10 +38,10 @@ class RegressionConfig:
                     val = hit.group(1)
                     if val.find('#') != -1:
                         val = val[:val.index('#')]
-                    val = val.rstrip() 
+                    val = val.rstrip()
                     self.token_map[key] = val
                     break
-        
+
         # non available config keys -> None
         for key in key_map:
             self.token_map[key] = None
@@ -61,7 +61,6 @@ class RegressionConfig:
         return self.get_val('reference_dir')
     def get_recipients(self):
         return self.get_val('recipients')
-        return self.get_val('reference_dir')
     def get_ref_exe(self):
         return self.get_val('ref_exe')
     def get_src_exe(self):
@@ -69,15 +68,22 @@ class RegressionConfig:
     def get_regression_exe(self):
         return self.get_val('regression_exe')
     def get_params(self):
-        return self.get_val('params')
+        params = ""
+        if self.get_val('params'):
+            params += self.get_val('params')
+        if self.get_masterconfig():
+            params += " -mcf %s" % self.get_masterconfig()
+        return params
     def get_masterconfig(self):
         return self.get_val('masterconfig')
+    def set_masterconfig(self, val):
+        self.token_map['masterconfig'] = val
     def get_headline(self):
         headline = self.get_val('headline')
         if headline is None:
             headline = os.path.basename(self.configuration_file)
         return headline
-    
+
     def add_param(self, val):
         if self.token_map['params'] is None:
             self.token_map['params'] = val
@@ -89,11 +95,11 @@ class RegressionConfig:
         for key in sorted(self.token_map):
             msg += '\n\t%s=%s' % (key, self.token_map[key])
         return msg
-    
+
 
 def parse_arguments():
     """parse commandline arguments"""
-    #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION    
+    #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('config_file', metavar='config_file', help='input regression configuration file')
@@ -104,9 +110,10 @@ def main():
     args = parse_arguments()
 
     config = RegressionConfig(args.config_file)
+    config.set_masterconfig('my.masterconfig')
     #config.add_param('-mcf %s' % config.get_masterconfig())
     print(config)
-        
+
 if __name__ == "__main__":
     try:
         main()
