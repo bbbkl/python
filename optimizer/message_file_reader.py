@@ -157,12 +157,16 @@ def strip_message_file(filename, process_ids, regex_filter, describe_cmd, invers
                 new_item = create_object(data, command)
                 if new_item is not None:
                     skip_flag = do_skip(new_item, process_ids, regex_filter, skip_flag, inverse_flag)
-                if not skip_flag:
-                    output.write(data_line)
             else:
                 skip_flag = False
-                
-            if not skip_flag:
+
+            print_flag = False
+            if isinstance(new_item, SetupPartFeature):
+                print_flag = True
+
+            if (not skip_flag) or print_flag:
+                if data_line is not None:
+                    output.write(data_line)
                 if describe_cmd:
                     line = describe_command(line)
                 output.write(line)
