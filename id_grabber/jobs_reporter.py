@@ -132,17 +132,17 @@ def have_change_job_line(logfile, code):
     return False
 
 def show_report(performance_items, stream=sys.stdout):
-    timeToItem = {}
+    time2item = {}
     for item in performance_items:
         secs = int(item.elapsed_total())
-        timeToItem.setdefault(secs, [])
-        timeToItem[secs].append(item)
+        time2item.setdefault(secs, [])
+        time2item[secs].append(item)
 
     stream.write('#total: %d\n' % len(performance_items))
-    if len(timeToItem) > 0:
+    if len(time2item) > 0:
         stream.write("\tseconds: #items\n")
-    for secs in sorted(timeToItem):
-        stream.write("\t%4d: %4d\n" % (secs, len(timeToItem[secs])))
+    for secs in sorted(time2item):
+        stream.write("\t%4d: %4d\n" % (secs, len(time2item[secs])))
     print()
 
     for idx, item in enumerate(performance_items):
@@ -162,7 +162,7 @@ def test_encoding(message_file):
             for _ in open(message_file, encoding=item):
                 pass
             return item
-        except _:
+        except UnicodeDecodeError:
             pass
 
     raise "Cannot get right encoding, tried %s" % str(encodings)
@@ -266,19 +266,21 @@ def get_duration(tp1, tp2):
     h2, m2, s2 = [int(x) for x in re.search(r'(\d{2}):(\d{2}):(\d{2})', tp2).groups()]
     return h2 * 60 * 60 + m2 * 60 + s2 - (h1 * 60 * 60 + m1 * 60 + s1)
 
-def queue_log_report(filename):
+def queue_log_report(filename, stream=sys.stdout):
     rgx = re.compile(r'(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}:\d{2})\s+(\S+).*#(\d+).*(p_.*\.p).*(beendet|beginnt)')
     prev_tp = prev_job_id = prev_dt =None
     for line in open(filename):
         hit = rgx.search(line)
         if hit:
+            print("hit")
             dt, tp, who, job_id, prg, _ = hit.groups()
             if prev_dt != dt:
+                stream.write("\n\n%s" % dt)
                 print("\n\n%s" % dt)
                 prev_dt = dt
             if prev_job_id == job_id:
                 duration = get_duration(prev_tp, tp)
-                print("job %s  duration=%02d start=%s end=%s (%s) %s" % (job_id, duration, prev_tp, tp, prg, who))
+                stream.write("job %s  duration=%02d start=%s end=%s (%s) %s" % (job_id, duration, prev_tp, tp, prg, who))
             prev_tp = tp
             prev_job_id = job_id
 
@@ -297,6 +299,20 @@ def batch_run(dirname, mode_52):
         show_report(report_data, stream)
         stream.close()
 
+def concat_logs(dirname):
+    logfiles = glob(dirname + "/*.log")
+    logfiles.sort()
+    # check for special logfile without timestamp
+    if not re.search(r'_\d+\d+\.log$', logfiles[0]):
+        logfiles.append(logfiles.pop(0))
+    result = os.path.join(dirname, "summary._tmp_")
+    with open(result, 'w') as outfile:
+        for fname in logfiles:
+            with open(fname) as infile:
+                for line in infile:
+                    outfile.write(line)
+    return result
+
 def parse_arguments():
     """parse arguments from command line"""
     parser = ArgumentParser()
@@ -311,6 +327,8 @@ def parse_arguments():
                         help="parse logfile with 5.2 mode")
     parser.add_argument('-b', '--batch', action='store_true',
                         dest='batch_run', default=False)
+    parser.add_argument('-c', '--concat', action='store_true',
+                        dest='concat_run', default=False)
     return parser.parse_args()
 
 def main():
@@ -324,6 +342,18 @@ def main():
 
     if args.batch_run:
         batch_run(filename, args.mode_52)
+        return 0
+
+    if args.concat_run:
+        try:
+            concatinated_log = concat_logs(filename)
+            report_data = performance_report(concatinated_log, args.mode_52)
+            with open(os.path.join(filename, "summary.txt"), 'w') as outfile:
+                show_report(report_data, outfile)
+        finally:
+            if os.path.exists(concatinated_log):
+                #os.remove(concatinated_log)
+                pass
         return 0
 
     report_data = performance_report(filename, args.mode_52)
