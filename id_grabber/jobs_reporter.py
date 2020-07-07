@@ -189,7 +189,10 @@ def performance_report(logfile, mode_52):
                        r'Sen[dt].*Solution to ERP',
                        r'DEF_APSCommandSetServerState______',
                        r'end syncronize',
+                       r'tardinessReasoning',
+                       r'ApsSchedulerCPO_emptySchedule',
                        r'elapsed milliseconds since last job start',
+                       r'APS Scheduler\s+#proc'
                        ]
     rgx_mid = re.compile(r"^.*(%s)" % '|'.join(mid_expressions))
 
