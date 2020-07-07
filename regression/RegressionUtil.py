@@ -24,7 +24,7 @@ def get_result_file(reference_file):
             candidates = glob(os.path.join(os.path.dirname(reference_file), basename.replace(hit.group(1), '*')))
             rgx = re.compile(basename.replace(hit.group(1), r'_\d{8}_\d{6}'))
             for item in candidates:
-                if rgx.search(item):
+                if item != reference_file and rgx.search(item):
                     return item
     return None
 
