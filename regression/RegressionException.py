@@ -7,7 +7,10 @@
 """
 
 class RegressionException(Exception):
+    """base exception class of regression"""
     def __init__(self, message):
-
         # Call the base class constructor with the parameters it needs
         super().__init__(message)
+
+class RegressionReasonException(RegressionException):
+    pass

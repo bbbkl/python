@@ -4,13 +4,27 @@
 # description
 """\n\n
     regression reason text file pair reference/result
+
+    do reason compare only if process endtimes of whole set did not change,
+    otherwise we compare onions which apples.
+    This must be checked by framework before.
+
+    check whether body file for reference exists, if not -> OK
+    get ref_reason_set
+    get res_reason_set
+
+    compare:
+    - number of ReasonHead equal?
+    - for each ReasonHead pair:
+      - same endtime (sanity check)
+      - equal number of subreasons?
 """
 
 from argparse import ArgumentParser
-import filecmp
 from enum import IntEnum
 import re
 from RegressionResultCodes import Regr
+from RegressionException import RegressionReasonException
 import RegressionUtil
 
 VERSION = '1.0'
@@ -60,6 +74,34 @@ def minutes_2_timestr(minutes_total):
         return "-P%02dDT%02dH%02dM" % (days, hours, minutes)
     return "P%02dDT%02dH%02dM" % (days, hours, minutes)
 
+class ReasonSet():
+    """all reasons of one reason textfile"""
+    def __init__(self, identifier):
+        self._id = identifier
+        self._reasons = {}
+
+    def add_reason(self, reason):
+        key = reason.get_key()
+        if key in self._reasons:
+            raise RegressionReasonException("reason key=%s occurs twice" % key)
+        self._reasons[key] = reason
+
+    def get_reason(self, key):
+        if key in self._reasons:
+            return self._reasons[key]
+        return None
+
+    def __eq__(self, other):
+        """compare against another reason set"""
+        if len(self._reasons) != len(other._reasons):
+            return Regr.DIFF
+        for key, ref_reason in self._reasons.items():
+            res_reason = other.get_reason(key)
+            if res_reason is None or ref_reason != res_reason:
+                return Regr.DIFF
+        return Regr.OK
+
+
 class ReasonHead():
     """a reason head has a delay and may have several subreasons"""
     def __init__(self, type_of, identifier):
@@ -67,12 +109,27 @@ class ReasonHead():
         self._id = identifier
         self._delay = ""
         self._end_tp = ""
-        self._subreasons = []
+        self._subreasons = {}
 
     def __str__(self):
         msg = "Reason type=%s id=%s tp=%s delay=%s #sub=%d" % \
             (self._type, self._id, self._end_tp, self._delay, len(self._subreasons))
         return msg
+
+    def get_key(self):
+        key = "%s id=%s" % (self._type, self._id)
+        if self.is_mat_proxy():
+            key += " mat=%s" % self.get_material()
+        return key
+
+    def is_mat_proxy(self):
+        return self._id.find("fixed_mat") != -1
+
+    def get_material(self):
+        if len(self._subreasons) != 1:
+            raise RegressionReasonException("fixed_max proxy reason with not exactly one sub reason, id=%s" % self._id)
+        for key in self._subreasons:
+            return self._subreasons[key].get_id()
 
     def add_delay(self, delay):
         self._delay = reformat_timestring(delay)
@@ -81,7 +138,29 @@ class ReasonHead():
         self._end_tp = timepoint
 
     def add_subreason(self, subreason):
-        self._subreasons.append(subreason)
+        key = subreason.get_key()
+        if key in self._subreasons:
+            if subreason.get_timebound() is not None:
+                print("INFO subreason key=%s occurs twice" % key)
+                return
+            raise RegressionReasonException("subreason key=%s occurs twice" % key)
+        self._subreasons[key] = subreason
+
+    def get_subreason(self, key):
+        if key in self._subreasons:
+            return self._subreasons[key]
+        return None
+
+    def __eq__(self, other):
+        if self._end_tp != other._end_tp:
+            return Regr.DIFF
+        if len(self._subreasons) != len(other._subreasons):
+            return Regr.DIFF
+        for subreason in self._subreasons:
+            res_subreason = other.get_subreason(subreason.get_key())
+            if res_subreason is None or subreason != res_subreason:
+                return Regr.DIFF
+        return Regr.OK
 
 class SubReason():
     """one reason (structure, timebound, material, resource, mat_res, res_res"""
@@ -89,6 +168,22 @@ class SubReason():
         self._type = type_of
         self._time_late = time_late
         self._process = process
+        self._timebound = None
+        self._id = None
+
+    def get_key(self):
+        return "%s proc=%s tb=%s id=%s" % (self._type, self._process, self._timebound, self._id)
+
+    def set_id(self, val):
+        self._id = val
+    def get_id(self):
+        return self._id
+    def add_timebound(self, timebound, act):
+        self._id = "%s/%s" % (timebound, act)
+        self._timebound = timebound
+
+    def get_timebound(self):
+        return self._timebound
 
     def __str__(self):
         msg = "sub_reason type=%s time_late=%s" % (self._type, self._time_late)
@@ -110,47 +205,75 @@ class RegressionReasons:
         return RegressionUtil.get_result_file(self.reference_file)
 
     def get_result(self):
-        res = self.get_result_file()
-        if res is None:
-            return Regr.FAILED
-        return self.compare(self.get_reference_file(), res)
+        res_file = self.get_result_file()
+        if res_file is not None:
+            ref = get_reasons(self.get_reference_file())
+            res = get_reasons(res_file)
+            if res != ref:
+                return Regr.DIFF
+        return Regr.OK
 
-    def compare(self, ref, res):
-        return Regr.OK if filecmp.cmp(ref, res) else Regr.DIFF
 
+def get_reason_identifier(line):
+    """get reason specific identifier (material, resource, timebound ..."""
+    regex = [
+        r'resource1=(\S+).*ress?ource2=(\S+)', # combi res_res
+        r'material=(\S+).*resource=(\S+)', # combi mat_res
+        r'resource=(\S+)',  # res
+         r'material=(\S+)'] # mat
+
+    for rgx in regex:
+        hit = re.search(rgx, line)
+        if hit:
+            return '/'.join(hit.groups())
+    return None
 
 def get_reasons(reason_file):
-    reasons = []
-    rgx_start = re.compile(r'^(Cluster|ClusterHead|PartProcess)=(.*)$')
-    rgx_delay = re.compile(r'\sdelay=(\S+)')
-    rgx_endtime = re.compile(r'\send_time=(\S+)')
-    rgx_subreason = re.compile(r'reason=(\S+).*timeLate=(\S+).*process=([^=]*\S)(?:$|\s+\S+=)')
-    new_reason = None
-    new_subreason = None
-    for line in open(reason_file):
-        hit = rgx_start.search(line)
-        if hit:
-            if new_subreason is not None:
-                new_reason.add_subreason(new_subreason)
-            new_subreason = None
-            if new_reason is not None:
-                reasons.append(new_reason)
-            new_reason = ReasonHead(to_reason_type(hit.group(1)), hit.group(2))
-            continue
-        hit = rgx_subreason.search(line)
-        if hit:
-            if new_subreason is not None:
-                new_reason.add_subreason(new_subreason)
-            new_subreason = SubReason(*hit.groups())
-            continue
-        hit = rgx_delay.search(line)
-        if hit:
-            new_reason.add_delay(hit.group(1))
-        hit = rgx_endtime.search(line)
-        if hit:
-            new_reason.add_end_timepoint(hit.group(1))
+    try:
+        reasons = ReasonSet(reason_file)
+        rgx_start = re.compile(r'^(Cluster|ClusterHead|PartProcess)=(.*)$')
+        rgx_delay = re.compile(r'\sdelay=(\S+)')
+        rgx_endtime = re.compile(r'\send_time=(\S+)')
+        rgx_subreason = re.compile(r'reason=(\S+).*timeLate=(\S+).*process=([^=]*\S)(?:$|\s+\S+=)')
+        rgx_timebound1 = re.compile(r'(?:act=|act= name=)(\S[^\]]+\]).*timeBound=(\S+)')
+        rgx_timebound2 = re.compile(r'(:?act=|act= name=)(\S+).*timeBound=(\S+)')
+        new_reason = None
+        new_subreason = None
+        for line in open(reason_file):
+            hit = rgx_start.search(line)
+            if hit:
+                if new_subreason is not None:
+                    new_reason.add_subreason(new_subreason)
+                new_subreason = None
+                if new_reason is not None:
+                    reasons.add_reason(new_reason)
+                new_reason = ReasonHead(to_reason_type(hit.group(1)), hit.group(2))
+                continue
+            hit = rgx_subreason.search(line)
+            if hit:
+                if new_subreason is not None:
+                    new_reason.add_subreason(new_subreason)
+                new_subreason = SubReason(*hit.groups())
+                identifier = get_reason_identifier(line)
+                if identifier is not None:
+                    new_subreason.set_id(identifier)
+                continue
+            hit = rgx_delay.search(line)
+            if hit:
+                new_reason.add_delay(hit.group(1))
+            hit = rgx_endtime.search(line)
+            if hit:
+                new_reason.add_end_timepoint(hit.group(1))
+            if line.find('timeBound') != -1:
+                hit = rgx_timebound1.search(line)
+                if not hit:
+                    hit = rgx_timebound2.search(line)
+                if hit:
+                    new_subreason.add_timebound(hit.group(1), hit.group(2))
 
-    return reasons
+        return reasons
+    except RegressionReasonException as ex:
+        raise RegressionReasonException("%s, file %s" % (ex, reason_file))
 
 def parse_arguments():
     """parse commandline arguments"""
@@ -166,10 +289,8 @@ def main():
 
     item = RegressionReasons(args.reference_file)
     print(item)
-    reasons = get_reasons(args.reference_file)
-    print("#reason=%d\n\n" % len(reasons))
-    for item in reasons:
-        print(item)
+
+    print("\nreason compare result = %s" % item.get_result())
 
 if __name__ == "__main__":
     try:
