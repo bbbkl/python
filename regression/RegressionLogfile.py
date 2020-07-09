@@ -179,8 +179,31 @@ class RegressionLogfile:
                     if len(keys) == 0:
                         break
                     rgx = self.make_key_val_rgx(keys)
+            result.update(self.get_resource_utilization_pairs(logfile))
         for key in keys:
             result[key] = 'NOT_FOUND'
+        return result
+
+    def get_resource_utilization_pairs(self, logfile):
+        """
+        res 7/4610 bottleneck=1 statistic_horizon=30 (days)
+        activity length:  median=282 average=473 average_short=18 average_long=2076 standard_deviation=524
+        usage:  area_inital=21180 free=7562 (35.7%) average=1.12 standard_deviation=0.40
+        """
+        result = {}
+        key = None
+        rgx_key = re.compile(r"(res\s.*)bottleneck=1\s+statistic_horizon=(\d+)")
+        rgx_val = re.compile(r"(free=[^=]+)\s\S+=")
+        for line in open(logfile, encoding=self.get_encoding(logfile)):
+            if key is None:
+                hit = rgx_key.search(line)
+                if hit:
+                    key = hit.group(1) + hit.group(2) + " days"
+            else:
+                hit = rgx_val.search(line)
+                if hit:
+                    result[key] = hit.group(1)
+                    key = None
         return result
 
     def get_key_value_diffs(self):
@@ -188,8 +211,8 @@ class RegressionLogfile:
         if os.path.exists(self.get_reference_file()) and os.path.exists(self.get_result_file()):
             ref = self.get_key_value_pairs(self.get_reference_file())
             res = self.get_key_value_pairs(self.get_result_file())
-            for key in self.get_keys():
-                if ref[key] != res[key]:
+            for key in ref:
+                if key in res and ref[key] != res[key]:
                     diff += "\n\t\t%s '%s' <-> '%s'" % (key, ref[key], res[key])
             if diff:
                 diff = "\n\tkey value pairs differ (ref <-> res)" + diff
