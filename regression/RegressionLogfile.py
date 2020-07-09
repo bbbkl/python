@@ -11,6 +11,7 @@ from datetime import datetime
 import re
 import os
 from RegressionResultCodes import Regr
+import RegressionUtil
 
 
 VERSION = '1.0'
@@ -268,25 +269,8 @@ class RegressionLogfile:
     def get_encoding(self, filename):
         """check which encoding is used within given file"""
         if not filename in self.encoding_cache:
-            self.encoding_cache[filename] = test_encoding(filename)
+            self.encoding_cache[filename] = RegressionUtil.test_encoding(filename)
         return self.encoding_cache[filename]
-
-def test_encoding(message_file):
-    """check for file encoding"""
-    encodings = ["UTF-8", "ISO-8859-1", "latin-1"]
-
-    if not os.path.exists(message_file):
-        raise FileNotFoundError(message_file)
-
-    for item in encodings:
-        try:
-            for _ in open(message_file, encoding=item):
-                pass
-            return item
-        except:
-            pass
-
-    raise "Cannot get right encoding, tried %s" % str(encodings)
 
 def parse_arguments():
     """parse commandline arguments"""

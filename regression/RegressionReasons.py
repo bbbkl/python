@@ -91,7 +91,7 @@ class ReasonSet():
             return self._reasons[key]
         return None
 
-    def __eq__(self, other):
+    def compare(self, other):
         """compare against another reason set"""
         if len(self._reasons) != len(other._reasons):
             return Regr.DIFF
@@ -153,14 +153,14 @@ class ReasonHead():
 
     def __eq__(self, other):
         if self._end_tp != other._end_tp:
-            return Regr.DIFF
+            return 0
         if len(self._subreasons) != len(other._subreasons):
-            return Regr.DIFF
-        for subreason in self._subreasons:
-            res_subreason = other.get_subreason(subreason.get_key())
+            return 0
+        for key, subreason in self._subreasons.items():
+            res_subreason = other.get_subreason(key)
             if res_subreason is None or subreason != res_subreason:
-                return Regr.DIFF
-        return Regr.OK
+                return 0
+        return 1
 
 class SubReason():
     """one reason (structure, timebound, material, resource, mat_res, res_res"""
@@ -189,6 +189,12 @@ class SubReason():
         msg = "sub_reason type=%s time_late=%s" % (self._type, self._time_late)
         return msg
 
+    def __eq__(self, other):
+        if self._time_late != other._time_late:
+            return 0
+        return 1
+
+
 class RegressionReasons:
     """regression result textfile pair based on a message file"""
     def __init__(self, reference_file):
@@ -209,8 +215,7 @@ class RegressionReasons:
         if res_file is not None:
             ref = get_reasons(self.get_reference_file())
             res = get_reasons(res_file)
-            if res != ref:
-                return Regr.DIFF
+            return ref.compare(res)
         return Regr.OK
 
 
@@ -219,8 +224,8 @@ def get_reason_identifier(line):
     regex = [
         r'resource1=(\S+).*ress?ource2=(\S+)', # combi res_res
         r'material=(\S+).*resource=(\S+)', # combi mat_res
-        r'resource=(\S+)',  # res
-         r'material=(\S+)'] # mat
+        r'resource=([^=]+)\s+\S+=',  # resource=xyz K3 (Machine) timeLate=P0
+         r'material=([^=]+)\s+\S+='] # mat
 
     for rgx in regex:
         hit = re.search(rgx, line)
@@ -235,11 +240,10 @@ def get_reasons(reason_file):
         rgx_delay = re.compile(r'\sdelay=(\S+)')
         rgx_endtime = re.compile(r'\send_time=(\S+)')
         rgx_subreason = re.compile(r'reason=(\S+).*timeLate=(\S+).*process=([^=]*\S)(?:$|\s+\S+=)')
-        rgx_timebound1 = re.compile(r'(?:act=|act= name=)(\S[^\]]+\]).*timeBound=(\S+)')
-        rgx_timebound2 = re.compile(r'(:?act=|act= name=)(\S+).*timeBound=(\S+)')
+        rgx_timebound = re.compile(r'act=(?: name=)?([^=]+)\s+\S+=.*timeBound=(\S+)')
         new_reason = None
         new_subreason = None
-        for line in open(reason_file):
+        for line in open(reason_file, encoding=RegressionUtil.test_encoding(reason_file)) :
             hit = rgx_start.search(line)
             if hit:
                 if new_subreason is not None:
@@ -265,9 +269,7 @@ def get_reasons(reason_file):
             if hit:
                 new_reason.add_end_timepoint(hit.group(1))
             if line.find('timeBound') != -1:
-                hit = rgx_timebound1.search(line)
-                if not hit:
-                    hit = rgx_timebound2.search(line)
+                hit = rgx_timebound.search(line)
                 if hit:
                     new_subreason.add_timebound(hit.group(1), hit.group(2))
 

@@ -13,6 +13,24 @@ import smtplib
 import re
 from glob import glob
 
+
+def test_encoding(message_file):
+    """check for file encoding"""
+    encodings = ["UTF-8", "ISO-8859-1", "latin-1"]
+
+    if not os.path.exists(message_file):
+        raise FileNotFoundError(message_file)
+
+    for item in encodings:
+        try:
+            for _ in open(message_file, encoding=item):
+                pass
+            return item
+        except:
+            pass
+
+    raise "Cannot get right encoding, tried %s" % str(encodings)
+
 def get_result_file(reference_file):
     """for given reference file find corresponding result file"""
     replacements = { 'reference' : 'result', 'reference.' : ''}
