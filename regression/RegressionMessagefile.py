@@ -13,6 +13,7 @@ import re
 from RegressionLogfile import RegressionLogfile
 from RegressionCsvfile import RegressionCsvfile
 from RegressionException import RegressionException
+from RegressionReasons import RegressionReasons
 from RegressionResultCodes import Regr
 
 VERSION = '1.0'
@@ -29,6 +30,7 @@ class RegressionMessagefile:
         self.partproc_pair = None
         self.activitities_pair = None
         self.ctp_pairs = []
+        self.reason_pairs = self.get_reasonfiles(message_file)
         self.get_csvfiles(message_file)
 
     def __str__(self):
@@ -89,13 +91,14 @@ class RegressionMessagefile:
         for item in [self.headproc_pair, self.partproc_pair, self.activitities_pair]:
             if item:
                 result.append(item)
+        result.extend(self.reason_pairs)
         result.extend(self.ctp_pairs)
         return result
 
     def get_result(self):
         result = Regr.OK
         for item in self.get_items():
-            result = max(result, item.get_result())
+                result = max(result, item.get_result())
         return result
 
     def get_messagefile(self):
@@ -146,6 +149,15 @@ class RegressionMessagefile:
                 else:
                     print("xxx UNHANDLED csv file", csv_item)
 
+    def get_reasonfiles(self, message_file):
+        basename = os.path.basename(message_file)[:-4]
+        base = message_file[:-4]
+        result = []
+        for reason_file in glob(base + "*.reasons.reference.txt"):
+            reason_item = RegressionReasons(reason_file)
+            result.append(reason_item)
+        return result
+
 def parse_arguments():
     """parse commandline arguments"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -160,6 +172,8 @@ def main():
 
     regression_item = RegressionMessagefile(args.message_file)
     #regression_item.rename_result_logfile()
+
+    print("regession result=%s" % regression_item.get_result())
     print(regression_item.create_report())
 
 if __name__ == "__main__":
