@@ -6,9 +6,7 @@
     take message_file an count contained commands, print overview to console
 """
 
-import sys
 import re
-import os.path
 from argparse import ArgumentParser
 
 VERSION = '0.1'
@@ -20,17 +18,19 @@ def parse_commands( messagefile, start_line, end_line ):
     rgx = re.compile(r'^2\t\d+\t(.*)')
     for line in open(messagefile):
         idx += 1
-        if idx < start_line: continue
-        if end_line != -1 and idx >= end_line: break
+        if idx < start_line:
+            continue
+        if end_line != -1 and idx >= end_line:
+            break
         hit = rgx.search(line)
         if hit:
             cmd = hit.group(1)
             result.setdefault(cmd, 0)
             result[cmd] += 1
-            
+
     return result
 
-def parse_commandsCtp( messagefile ):
+def parse_commands_ctp( messagefile ):
     """count contained commands"""
     stats = {}
     idx = 0
@@ -40,7 +40,7 @@ def parse_commandsCtp( messagefile ):
     ctp_count = 0
     for line in open(messagefile):
         idx += 1
-        
+
         if line.find('DEF_ERPCommandgetSolutionCtpProd__') != -1:
             ctp_count += 1
             print("\n\nobj count between lines %d and %d, ctp_no=%d process=%s" % (line_start, idx, ctp_count, prev_line[2:-1]))
@@ -48,7 +48,7 @@ def parse_commandsCtp( messagefile ):
             stats = {}
             line_start = idx
             continue
-        
+
         hit = rgx.search(line)
         if hit:
             cmd = hit.group(1)
@@ -56,7 +56,7 @@ def parse_commandsCtp( messagefile ):
             stats[cmd] += 1
 
         prev_line = line
-        
+
 def pretty_print(stats):
     """pretty print dict to console"""
     for key in stats:
@@ -76,7 +76,7 @@ def parse_arguments():
                       dest="endline", default=-1,
                       help="skip lines after reaching endline")
     parser.add_argument('-c', '--ctp', action="store_true", # or store_false
-                      dest="ctp", default=False) 
+                      dest="ctp", default=False)
 
     return parser.parse_args()
 
@@ -84,11 +84,11 @@ def main():
     """main function"""
     args = parse_arguments()
     filename = args.message_file
-    
+
     if args.ctp:
-        parse_commandsCtp(filename)
+        parse_commands_ctp(filename)
         return
-    
+
     stats = parse_commands(filename, args.startline, args.endline)
     pretty_print(stats)
 
