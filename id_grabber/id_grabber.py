@@ -188,8 +188,10 @@ def grep_ids_logfile(logfile):
     rgx2 = re.compile(r"begin SolGoalSchedulePrioI::execute scheduling process: p\d+\s+([\-A-Z]\S+)")
     rgx3 = re.compile(r"begin SolGoalSchedulePrioI::execute scheduling process: p\d+\s+\d+\s+([\-A-Z]\S+)")
     rgx4 = re.compile(r"begin SolGoal_scheduleSequenceBlockI::execute scheduling process: (\S.*) id=")
+    rgx5 = re.compile(r"scheduling process: ([A-Z\-0-9]+) id=")
     for line in open(logfile):
-        hit = rgx1.search(line) or rgx2.search(line) or rgx3.search(line) or rgx4.search(line)
+        hit = rgx1.search(line) or rgx2.search(line) or rgx3.search(line) or rgx4.search(line) or rgx5.search(line)
+        #hit = rgx5.search(line)
         if hit:
             proc_id = hit.group(1)
             if not proc_id in proc_ids:
