@@ -15,7 +15,7 @@ class M_DispoBew(BaseItem):
 
     def __str__(self):
         text = "termin: %s, bedarfsmenge: %d, deckungsmenge: %d, mrp_area: %s" % \
-            (self.dispo_termin(), self.bedarfsmenge(), self.deckungsmenge(), self.mrp_area()) 
+            (self.dispo_termin(), self.bedarfsmenge(), self.deckungsmenge(), self.mrp_area())
         return text
 
     def article_id(self):
@@ -62,7 +62,8 @@ class M_DispoBew(BaseItem):
         amount = self.deckungsmenge()
         if amount == 0.0:
             amount = -1.0 * self.bedarfsmenge()
-        return "%s %s %s %2.1f" % (self.article_id(), self.mrp_area(), self.dispo_termin(), amount)  
+        return "%s %s %s %2.1f %s" % (self.article_id(), self.mrp_area(), self.dispo_termin(),
+                                      amount, self.belegart_herkunft())
 
     @classmethod
     def commands(cls):
@@ -72,7 +73,7 @@ class M_DispoBew(BaseItem):
         if self.mode51():
             return ['ArtId', 'part_variant', 'Dispotermin', 'demand_quantity', 'Deckungsmenge',
                 'Reservierungsmenge', 'Belegart_herkunft', 'Schl_herkunft', 'Dispozeit',
-                'cro', 'mrp_area', 
+                'cro', 'mrp_area',
                 'Lagerort', # diff to 5.3
                 'lot', 'Active_order']
         return ['ArtId', 'part_variant', 'Dispotermin', 'demand_quantity', 'Deckungsmenge',
