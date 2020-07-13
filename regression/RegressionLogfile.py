@@ -180,8 +180,19 @@ class RegressionLogfile:
                         break
                     rgx = self.make_key_val_rgx(keys)
             result.update(self.get_resource_utilization_pairs(logfile))
+            result.update(self.get_reason_pairs(logfile))
         for key in keys:
             result[key] = 'NOT_FOUND'
+        return result
+
+    def get_reason_pairs(self, logfile):
+        """check tardiness reasons overview"""
+        result = {}
+        rgx = re.compile(r'#(Structure|Material|Resource|Timebound|Combi material / resource|Combi resource / resource): (.*)')
+        for line in open(logfile, encoding=self.get_encoding(logfile)):
+            hit = rgx.search(line)
+            if hit:
+                result["Reasons/#" + hit.group(1)] = hit.group(2)
         return result
 
     def get_resource_utilization_pairs(self, logfile):
