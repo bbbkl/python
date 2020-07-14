@@ -77,7 +77,11 @@ class Command(MessageLine):
     def __init__(self, tokens):
         MessageLine.__init__(self, tokens)
     def text(self):
-        return CommandMapper.num2text()[int(self._tokens[0])]
+        try:
+            return CommandMapper.num2text()[int(self._tokens[0])]
+        except:
+            print("UNKNOWN_COMMAND_%s" % self._tokens[0])
+            return "UNKNOWN_COMMAND_%s" % self._tokens[0]
     def cmd_id(self):
         return int(self._tokens[0])
 

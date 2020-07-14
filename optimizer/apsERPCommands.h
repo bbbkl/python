@@ -160,6 +160,7 @@
 #define DEF_ERPCommandcreate_ApsTrStock___  334
 
 #define DEF_ERPCommandcreate_MD_Artikel___  335 //!< used to receive denoted data type (dispo params for part)
+#define DEF_ERPCommandcreate_ApsTrSafetySt  336
 
 #define DEF_ERPCommandcreate_MC_Art_______  340 //!< used to receive denoted data type (charge type)
 #define DEF_ERPCommandcreate_MC_Charge____  341 //!< used to receive denoted data type (charge)
