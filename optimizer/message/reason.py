@@ -328,15 +328,7 @@ class Reason(BaseItem):
     def token_descriptions(self):
         res = ['head_obj_type', 'part_process', 'is_cluster_reason', 'is_ctp',
                 'transmission_id', 'reason_type', 'tardiness', 'earliest_end_date', 'earliste_end_time']
-        type_specific = {
-            20 : [], 
-            30 : [],
-            40 : [],
-            50 : [],
-            60 : [],
-            70 : []
-            }
-
+        
         if self.reason_type() == 20: # Structure
             res.extend(['subtype',])
         elif self.reason_type() == 30: # timebound
@@ -352,6 +344,7 @@ class Reason(BaseItem):
             res.extend(['res1_kind', 'res1', 'res2_kind', 'res2'])
         else:
             res.extend(['par10', 'par11', 'par12', 'par13', 'par14', 'par15', 'par16', 'par17'])
+
         return res
 
 class ReasonAct(BaseItem):
