@@ -8,6 +8,7 @@
 
 import sys
 import re
+from argparse import ArgumentParser
 
 VERSION = '0.1'
 
@@ -15,8 +16,8 @@ class SchedulingTrigger:
     """parsed scheduling trigger"""
     def __init__(self, tokens, line_idx):
         self._tokens = tokens
-        self._demandId = tokens[1]
-        self._coverId = tokens[4]
+        self._demand_id = tokens[1]
+        self._cover_id = tokens[4]
 
     def key(self):
         #return "%s" % self._tokens[1]
@@ -113,27 +114,36 @@ def parse_items( messagefile ):
             prev_line = line
     return infos, triggers
 
-def pretty_print(items):
+def pretty_print(items, show_all):
     """pretty print dict to console"""
     key_prev = ""
     for item in sorted(items):
         if key_prev!="" and key_prev == item.key():
             print(item)
-        print(item)
+        if show_all:
+            print(item)
         key_prev = item.key()
+
+def parse_arguments():
+    parser = ArgumentParser()
+    parser.add_argument('-v', '--version', action='version', version=VERSION)
+    parser.add_argument('message_file', metavar='message_file', help='input message file')
+    parser.add_argument('-a', '--show_all', action="store_true", # or stare_false
+                      dest="show_all", default=False, # negative store value
+                      help="show all parsed sched info/trigger items on console")
+    return parser.parse_args()
 
 def main():
     """main function"""
-    filename = sys.argv[1]
-
-    sched_infos, sched_triggers = parse_items(filename)
+    args = parse_arguments()
+    sched_infos, sched_triggers = parse_items(args.message_file)
     sched_infos.sort()
     sched_triggers.sort()
 
     print("### scheduling_infos #=%d ###" % len(sched_infos))
-    pretty_print(sched_infos)
+    pretty_print(sched_infos, args.show_all)
     print("### scheduling_triggers #=%d ###" % len(sched_triggers))
-    pretty_print(sched_triggers)
+    pretty_print(sched_triggers, args.show_all)
 
 if __name__ == "__main__":
     try:
