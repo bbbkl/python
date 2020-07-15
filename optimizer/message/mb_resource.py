@@ -79,4 +79,4 @@ class MResourceKombination(BaseItem):
         return ['DEF_ERPCommandcreate_M_RessKombina', ]
 
     def token_descriptions(self):
-        return [ 'res_type_machine', 'res_machine', 'res_type_tool', 'res_tool' ]    
+        return [ 'res_type_machine', 'res_machine', 'res_type_tool', 'res_tool' ]
