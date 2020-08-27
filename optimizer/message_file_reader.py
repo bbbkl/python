@@ -37,6 +37,7 @@ from message.mc_lager import McLager
 from message.mc_charge import McCharge
 from message.mc_art import McArt
 from message.tr_stock import TrStock, TrStockFromMLArtOrtKomm
+from message.tr_safetystock import TrSafetyStock
 from message.m_ressgruppe import MRessGruppe
 from message.m_uebort import M_UebOrt
 from message.m_uebadresse import M_UebAdresse
@@ -362,7 +363,7 @@ def get_id_to_class_mapping():
                    TrProcess, Coverage,
                    TrMaterial, TrConstraint, TrProcessCst, McLager, McCharge, McArt, MRessGruppe,
                    TrTimeConst,
-                   ML_ArtOrt, ML_ArtOrtVar, M_UebOrt, M_UebAdresse, CheckErpID, TrStock, TrStockFromMLArtOrtKomm,
+                   ML_ArtOrt, ML_ArtOrtVar, M_UebOrt, M_UebAdresse, CheckErpID, TrStock, TrSafetyStock, TrStockFromMLArtOrtKomm,
                    ReasonMaterial, ReasonResource, ReasonResRes, ReasonTimebound, ReasonStructure, ReasonAdmin,
                    ReasonHead, Reason, ReasonAct,
                    APSCommandackSolutionCtpProd, JobContext, JobContextCtp, JobContextCtpProd,

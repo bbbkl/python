@@ -30,6 +30,7 @@ encoding//message/tr_material.py=ISO-8859-1
 encoding//message/tr_process.py=ISO-8859-1
 encoding//message/tr_processcst.py=ISO-8859-1
 encoding//message/tr_resource.py=ISO-8859-1
+encoding//message/tr_safetystock.py=ISO-8859-1
 encoding//message/tr_stock.py=ISO-8859-1
 encoding//message/tr_timeconst.py=ISO-8859-1
 encoding//message/xcalendar.py=ISO-8859-1

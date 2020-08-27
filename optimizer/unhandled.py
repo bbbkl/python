@@ -13,6 +13,6 @@ class Unhandled(BaseItem):
     def __init__(self, tokens, command):
         BaseItem.__init__(self, tokens, command)
 
-    @classmethod        
+    @classmethod
     def commands(cls):
-        return []  
+        return []
