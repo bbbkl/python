@@ -223,20 +223,21 @@ def get_setup_horizon(filename):
             return tokens[idx_horizon]
  
 def get_range_stat(filename):
-    """get number of values with start before given timepoint and accumulated work"""
+    """get number of values with start before given timepoint and accumulated tr"""
     timepoint = get_setup_horizon(filename)
     deadline = get_datetime_from_string(timepoint)
     first_line = True
-    idx_start = idx_work = idx_cost = None
+    idx_start = idx_tr = idx_cost = None
     range_count = 0
-    range_work = 0
+    range_tr = 0
     range_cost = 0
     for line in open(filename):
         tokens = line.split(';')
         if first_line:
             first_line = False
             idx_start = tokens.index('Start')
-            idx_work = tokens.index('Proc_Time_Acc')
+            idx_te = tokens.index('Setup_Time_Acc')
+            idx_tr = tokens.index('Proc_Time_Acc')
             idx_cost = tokens.index('Setup_Properties_Change')
             continue
         start = tokens[idx_start]
@@ -244,8 +245,9 @@ def get_range_stat(filename):
             break
         range_count += 1
         range_cost += int(tokens[idx_cost])
-        range_work = int(tokens[idx_work])
-    return range_count, range_work, range_cost
+        range_te = int(tokens[idx_te])
+        range_tr = int(tokens[idx_tr])
+    return range_count, range_te, range_tr, range_cost
   
 def grep_data(logfile, keys):
     """grep phase4 quality relevant data out of logfile"""
@@ -309,14 +311,14 @@ def parse_logfile(logfile):
     
     return result
   
-def pretty_print_accumulated_setup_stats(resourceToValues, log_stats):   
-    """res id -> first level dir, interval, horizon, cost, count, range count, range cost, range work"""
+def pretty_print_accumulated_setup_stats(resourceToValues, log_stats, stream=None):   
+    """res id -> first level dir, interval, horizon, cost, count, range count, range cost, range tr"""
     idToSum = {}
     for res in sorted(resourceToValues):
         if res[0] != '1':
             continue
-        for dirname, interval, horizon, cost, count, range_count, range_work, range_cost in resourceToValues[res]:
-            idToSum.setdefault(dirname, {'interval' : 0, 'horizon': 0, 'cost' : 0, 'count' : 0, 'range_count' : 0, 'range_work' : 0, 'range_cost' : 0})
+        for dirname, interval, horizon, cost, count, range_count, range_te, range_tr, range_cost in resourceToValues[res]:
+            idToSum.setdefault(dirname, {'interval' : 0, 'horizon': 0, 'cost' : 0, 'count' : 0, 'range_count' : 0, 'range_te' : 0, 'range_tr' : 0, 'range_cost' : 0})
             #sumStat = idToSum[dirname]
             idToSum[dirname]['interval'] = interval
             idToSum[dirname]['horizon'] = horizon
@@ -324,11 +326,13 @@ def pretty_print_accumulated_setup_stats(resourceToValues, log_stats):
             idToSum[dirname]['cost'] += cost
             idToSum[dirname]['count'] += count
             idToSum[dirname]['range_count'] += range_count
-            idToSum[dirname]['range_work'] += range_work
+            idToSum[dirname]['range_te'] += range_te
+            idToSum[dirname]['range_tr'] += range_tr
             idToSum[dirname]['range_cost'] += range_cost
     
-    print('\nresources 00410 - 00415 + 00466 - 00468')
-    print('dirname;interval;horizon;total_cost;total_values;range_values;range_cost;range_work;Earliness;Lateness;#early;#in_time;#delayed;execution_time;step_times (secs)')
+   
+    output('\nresources 00410 - 00415 + 00466 - 00468', stream)
+    output('dirname;interval;horizon;total_cost;total_values;range_values;range_cost;range cost/val%;range_te, range_tr;Earliness;Lateness;#early;#in_time;#delayed;execution_time;step_times (secs)', stream)
     sorted_keys = sorted(idToSum)
     key = 'without_setup_opti'
     if key in sorted_keys:
@@ -341,8 +345,10 @@ def pretty_print_accumulated_setup_stats(resourceToValues, log_stats):
         c = sub_stat['cost']
         cnt = sub_stat['count']
         r_cnt = sub_stat['range_count']
-        r_wrk = sub_stat['range_work']
+        r_te = sub_stat['range_te']
+        r_tr = sub_stat['range_tr']
         r_cost = sub_stat['range_cost']
+        r_cost_values_pct = '{0:.1f}'.format(r_cost * 100 / max(1, r_cnt))
         
         log_stat = log_stats[name]
         earliness = log_stat['Earliness total']
@@ -353,9 +359,10 @@ def pretty_print_accumulated_setup_stats(resourceToValues, log_stats):
         elapsed = log_stat['computing time.*\(']
         elapsed = elapsed[0: elapsed.find('.')]
         steps = log_stat['steps']
-        print("%s;%d;%d;%d;%d;%d;%d;%d;%s;%s;%s;%s;%s;%s;%s" % (name, i, h, c, cnt, r_cnt, r_cost, r_wrk,
-            earliness, lateness, early, in_time, delayed, elapsed, steps)) 
-  
+        output("%s;%d;%d;%d;%d;%d;%d;%s;%d;%d;%s;%s;%s;%s;%s;%s;%s" % (name, i, h, c, cnt, 
+            r_cnt, r_cost, r_cost_values_pct, r_te, r_tr,
+            earliness, lateness, early, in_time, delayed, elapsed, steps), stream)
+          
 def get_logfile(dirname, extension):
     files = glob(dirname + '/*%s' % extension)
     if len(files) == 0:
@@ -375,19 +382,28 @@ def calc_log_stats(setup_files, log_stats, single=False):
         log_file = get_logfile(os.path.dirname(fn1), '.reference.log')
         log_stats['without_setup_opti'] = parse_logfile(log_file)
   
-def pretty_print_setup_stats(resourceToValues, log_stats = None):   
+def output(content, stream=None):
+    content = content.replace('.', ',')
+    if stream:
+        stream.write(content + '\n')
+    else:
+        print(content)
+
+def pretty_print_setup_stats(resourceToValues, log_stats = None, stream=None):   
     """res id -> first level dir, interval, horizon, cost"""
     if log_stats is None:
         for res in sorted(resourceToValues):
-            print('\n%s' % res)
-            print('dirname;interval;horizon;total_cost;total_values;range_values;range_cost;range_work')
-            for dirname, interval, horizon, cost, count, range_count, range_work, range_cost in resourceToValues[res]:
-                print("%s;%d;%d;%d;%d;%d;%d;%d" % (dirname, interval, horizon, cost, count, range_count, range_cost, range_work))
+            output('\n%s' % res, stream)
+            output('dirname;interval;horizon;total_cost;total_values;range_values;range_cost;range cost/val%;range_te;range_tr', stream)
+            for dirname, interval, horizon, cost, count, range_count, range_te, range_tr, range_cost in resourceToValues[res]:
+                r_cost_values_pct = '{0:.1f}'.format(range_cost * 100 / max(1, range_count))
+                output("%s;%d;%d;%d;%d;%d;%d;%s;%d;%d" % (dirname, interval, horizon, cost, count, 
+                    range_count, range_cost, r_cost_values_pct, range_te, range_tr), stream)
     else:
         for res in sorted(resourceToValues):
-            print("\n'%s'" % res)
-            print('dirname;interval;horizon;total_cost;total_values;range_values;range_cost;range_work;Earliness;Lateness;#early;#in_time;#delayed;execution_time;step_times (secs)')
-            for name, interval, horizon, cost, count, range_count, range_work, range_cost in resourceToValues[res]:
+            output("\n'%s'" % res, stream)
+            output('dirname;interval;horizon;total_cost;total_values;range_values;range_cost;range cost/val%;range_te;range_tr;Earliness;Lateness;#early;#in_time;#delayed;execution_time;step_times (secs)', stream)
+            for name, interval, horizon, cost, count, range_count, range_te, range_tr, range_cost in resourceToValues[res]:
                 log_stat = log_stats[name]
                 earliness = log_stat['Earliness total']
                 lateness = log_stat['Lateness total']
@@ -397,8 +413,10 @@ def pretty_print_setup_stats(resourceToValues, log_stats = None):
                 elapsed = log_stat['computing time.*\(']
                 elapsed = elapsed[0: elapsed.find('.')]
                 steps = log_stat['steps']
-                print("%s;%d;%d;%d;%d;%d;%d;%d;%s;%s;%s;%s;%s;%s;%s" % (name, interval, horizon, cost, count, range_count, range_cost, range_work,
-                    earliness, lateness, early, in_time, delayed, elapsed, steps)) 
+                r_cost_values_pct = '{0:.1f}'.format(range_cost * 100 / max(1, range_count))
+                output("%s;%d;%d;%d;%d;%d;%s;%d;%d;%s;%d;%s;%s;%s;%s;%s;%s;%s" % (name, interval, horizon, 
+                    cost, count, range_count, range_cost, r_cost_values_pct, range_te, range_tr,
+                    earliness, lateness, early, in_time, delayed, elapsed, steps), stream) 
     
 def pretty_print_value_stat(value_stat):
     for key in sorted(value_stat):
@@ -530,11 +548,11 @@ def calc_setup_stats(setup_files, stats):
         cost = calculate_cost(setup_file)
         value_count = get_value_count(setup_file)
         # 60 days range
-        range_count, range_work, range_cost = get_range_stat(setup_file)
+        range_count, range_te, range_tr, range_cost = get_range_stat(setup_file)
         #durations = getDurations(setup_file)
         
         stats.setdefault(resource, [])
-        stats[resource].append((short_name, interval, horizon, cost, value_count, range_count, range_work, range_cost))
+        stats[resource].append((short_name, interval, horizon, cost, value_count, range_count, range_te, range_tr, range_cost))
     return stats
 
 def filter_the_reference_files(candidates):
@@ -556,15 +574,34 @@ def add_reference_info(start_dir, setup_stats):
         cost = calculate_cost(fn)
         value_count = get_value_count(fn)
         #print(value_count, resource, fn)
-        range_count, range_work, range_cost = get_range_stat(fn)
-        resToCost[resource] = (cost, value_count, range_count, range_work, range_cost)
+        range_count, range_te, range_tr, range_cost = get_range_stat(fn)
+        resToCost[resource] = (cost, value_count, range_count, range_te, range_tr, range_cost)
     for res in resToCost:
-        cost, value_count, rg_cnt, rg_wrk, rg_cost = resToCost[res]
+        cost, value_count, rg_cnt, rg_te, rg_tr, rg_cost = resToCost[res]
         setup_stats.setdefault(res, [])
-        setup_stats[res].append(('without_setup_opti', 0, 0, cost, value_count, rg_cnt, rg_wrk, rg_cost))
+        setup_stats[res].append(('without_setup_opti', 0, 0, cost, value_count, rg_cnt, rg_te, rg_tr, rg_cost))
         #print('%s %d' % (res, resToCost[res]))
     #sys.exit(0)
     return setup_stats
+        
+def do_it(args, path):
+    if args.cost:
+        out = open(path + ".cost.csv", "w")
+        start_dir = path
+        setup_files = find_setup_files(start_dir)
+        setup_stats = {}
+        setup_stats = add_reference_info(start_dir, setup_stats)
+        setup_stats = calc_setup_stats(setup_files, setup_stats)
+        
+        log_stats = {}
+        calc_log_stats(setup_files, log_stats)
+        
+        bega = 1 if setup_files[0].find('bega') else 0
+        if bega:
+            pretty_print_accumulated_setup_stats(setup_stats, log_stats, out)
+            pretty_print_setup_stats(setup_stats, stream=out)
+        else:
+            pretty_print_setup_stats(setup_stats, log_stats, out)
         
 def parse_arguments():
     """parse arguments from command line"""
@@ -574,6 +611,9 @@ def parse_arguments():
     parser.add_argument('-c', '--cost',  action="store_true", # or store_false
                       dest="cost", default=False, # negative store value
                       help="calculate setup cost for given csv setup file")
+    parser.add_argument('-b', '--batch',  action="store_true", # or store_false
+                      dest="batch", default=False, # negative store value
+                      help="perform operation for each subdirectory below given directory")
     parser.add_argument('-cs', '--cost_result',  action="store_true", # or store_false
                       dest="cost_result", default=False, # negative store value
                       help="calculate setup cost for given csv result setup files")
@@ -591,6 +631,12 @@ def main():
 
     #show_non_mofas(filename)
     #return 
+
+    if args.batch:
+        subdirs = [x[:-1] for x in glob(filename + "/*/")]
+        for item in subdirs:
+            do_it(args, item)
+        return
 
     if args.cost:
         start_dir = filename
@@ -613,6 +659,7 @@ def main():
     if args.cost_result:
         start_dir = filename
         setup_files = find_setup_files(start_dir)
+        #for x in setup_files: print(x)
         setup_stats = {}
         setup_stats = calc_setup_stats(setup_files, setup_stats)
         

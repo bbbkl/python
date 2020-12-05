@@ -142,6 +142,7 @@ class BaseItem(object):
         msg = "\n%s - Description/Token mismatch for class: %s" % ("Warning" if diff>0 else "ERROR", classname)
         msg += ", mode: %s\n" % ("5.1" if cls.mode51() else "5.2/5.3/6.1")
         msg += "#description: %d, #tokens: %d\n" % (len(descriptions), len(tokens))
+        #msg += "line=%s" % "\t".join(tokens)
         if diff > 0:
             msg += "ignored descriptions: %s" % descriptions[-diff:] 
         print(msg)

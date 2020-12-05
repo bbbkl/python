@@ -2,39 +2,55 @@
 # file: temp.py
 #
 # description
+
 """\n\n
     script to try something out and which is not lost after shutdown
 """
-
 import re
 from argparse import ArgumentParser
+import os.path
 
 VERSION = '0.1'
 
-
-def grep_process(msgfile):
-    rgx = re.compile("scheduling process:\s+(\S.*\S)\s+id=")
-    result = set()
-    for line in open(msgfile):
+def grep_keys(filename):
+    cal_items = []
+    res_items = []
+    prev_idx = None
+    rgx = re.compile("^xxx(1|2).*'([^']*)'.*key='([^']*)'")
+    for line in open(filename):
         hit = rgx.search(line)
         if hit:
-            result.add(hit.group(1))
-            #print(hit.group(1))
-    return result
+            idx, val, key = hit.groups()
+            if idx == "1":
+                if prev_idx is None:
+                    cal_items.append({})
+                cal_items[-1][key] = val
+            if idx == "2":
+                if prev_idx is None:
+                    res_items.append({})
+                res_items[-1][key] = val                     
+            prev_idx = idx
+        else:
+            prev_idx = None
 
-def check_for_dublicates(msgfile):
-    items = set()
-    rgx = re.compile(r"(^ActDispatch\s+\S+\s+\S+)")
-    for line in open(msgfile):
-        hit = rgx.search(line)
-        if hit:
-            val = hit.group(1)
-            print(val)
-            if val in items:
-                print("dublicate='%s'" % val)
-            items.add(val)
-    print("#items=%d" % len(items))
-
+    # compuare res
+    for item in cal_items:
+        print("#cal=%d" % len(item))
+    for item in res_items:
+        print("#res=%d" % len(item))
+    
+    cal1 = cal_items[0]
+    cal2 = cal_items[1]
+    for key in cal2:
+        if not key in cal1:
+            print("new cal2 key=%s val=%s" % (key, cal2[key])) 
+    
+    res1 = res_items[0]
+    res2 = res_items[1]      
+    for key in res2:
+        if not key in res1:
+            print("new res2 key=%s val=%s" % (key, res2[key])) 
+        
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -58,13 +74,15 @@ def parse_arguments():
 def main():
     """main function"""
     args = parse_arguments()
-    msgfile = args.message_file
 
-    procs = grep_process(msgfile)
-    print(','.join(procs))
-
-
-
+    grep_keys(args.message_file)
+    
+    """
+    diff_dict = grep_longfiles(args.message_file)
+    print("\n")
+    pretty_print(diff_dict)
+    """
+    
 if __name__ == "__main__":
     try:
         main()

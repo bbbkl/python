@@ -2,5 +2,6 @@ eclipse.preferences.version=1
 encoding//setup_matrix/process_template.py=ISO-8859-1
 encoding//setup_matrix/setup_util.py=ISO-8859-1
 encoding/bega.py=ISO-8859-1
+encoding/limburg.py=ISO-8859-1
 encoding/make_setup_szenario.py=ISO-8859-1
 encoding/setup_eval.py=ISO-8859-1

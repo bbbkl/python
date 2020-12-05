@@ -66,6 +66,13 @@ class PerformanceTrace:
                 return 'sync'
         return 'unknown'
 
+    def get_proc_act_info(self):
+        for line in self._lines:
+            hit = re.search(r'APS Scheduler  (#proc: \d+, #act: \d+)', line)
+            if hit:
+                return hit.group(1)
+        return None
+
     def get_mid1(self):
         for line in self._lines:
             if line.find('buildObjectModel')!=-1:
@@ -98,6 +105,28 @@ class PerformanceTrace:
         if self._lines[-1].find('checkForCancelCommandQueue') != -1 and len(self._lines) > 1:
             idx = -2
         return idx
+
+    def get_mem_min(self):
+        return self.get_mem(True)
+    def get_mem_max(self):
+        return self.get_mem(False)
+
+    def get_mem(self, get_min):
+        mem_tmp = None
+        for line in self._lines:
+            # peak memory [gb]: 0.37
+            hit = re.search(r'peak memory \[gb\]:\s+([0-9\.]+)', line)
+            if hit:
+                val = float(hit.group(1))
+                if mem_tmp is None: 
+                    mem_tmp = val
+                elif get_min and val < mem_tmp:
+                    mem_tmp = val
+                elif not get_min and val > mem_tmp:
+                    mem_tmp = val
+        if mem_tmp is None:
+            mem_tmp = -1.0 if get_min else 9999.0
+        return mem_tmp
 
     def start_to_end(self):
         start = get_datetime(self._lines[0])
@@ -150,6 +179,21 @@ def show_report(performance_items, stream=sys.stdout):
         stream.write("%02d %s: %s %s %s\n%s\n" % (idx, item.get_type(), item.elapsed_total(),
                                                   item.start_to_end(), item.get_start_timepoint(), line))
 
+def show_short_report(performance_items, stream=sys.stdout):
+    stream.write("Index;Startzeit;Dauer;Was;#proc #acts;Speicher_min;Speicher_max\n")
+    for idx, item in enumerate(performance_items):
+        line = "%02d;%s;%s;%s;%s;%0.1f;%0.1f" % (idx, item.get_start_timepoint(), item.elapsed_total(), item.get_type(),
+                                        item.get_proc_act_info(), item.get_mem_min(), item.get_mem_max())
+        line = line.replace('.', ',')
+        stream.write(line + "\n")
+        
+        """
+        stream.write("%02d %s: %s %s %s %0.2f %0.2f %s\n" % (idx, item.get_type(), item.elapsed_total(),
+                                             item.start_to_end(), item.get_start_timepoint(), 
+                                             item.get_mem_min(), item.get_mem_max(),
+                                             item.get_proc_act_info()))
+        """
+
 def test_encoding(message_file):
     """check for file encoding"""
     encodings = ["UTF-8", "ISO-8859-1", "latin-1"]
@@ -185,14 +229,15 @@ def performance_report(logfile, mode_52):
                        r'begin syncronize, job no',
                        r'Decomposition\s+\|',
                        r'ApsModelerIlo\:\:createIlogModel',
-                       r'end ApsSchedulerCPO_optimalDemandTimes',
+                       r'ApsSchedulerCPO_optimalDemandTimes',
                        r'Sen[dt].*Solution to ERP',
                        r'DEF_APSCommandSetServerState______',
                        r'end syncronize',
                        r'tardinessReasoning',
                        r'ApsSchedulerCPO_emptySchedule',
                        r'elapsed milliseconds since last job start',
-                       r'APS Scheduler\s+#proc'
+                       r'APS Scheduler\s+#proc',
+                       r'invoke restart service'
                        ]
     rgx_mid = re.compile(r"^.*(%s)" % '|'.join(mid_expressions))
 
@@ -353,6 +398,8 @@ def main():
             report_data = performance_report(concatinated_log, args.mode_52)
             with open(os.path.join(filename, "summary.txt"), 'w') as outfile:
                 show_report(report_data, outfile)
+            #with open(os.path.join(filename, "summary_short.csv"), 'w') as outfile:
+            #    show_short_report(report_data, outfile)
         finally:
             if os.path.exists(concatinated_log):
                 #os.remove(concatinated_log)
