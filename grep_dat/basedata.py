@@ -20,7 +20,55 @@ class BaseData(object):
     def __init__(self, tokens):
         self._tokens = tokens
 
-class Process(BaseData):
+class Edge(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+    
+    def proc_area(self):
+        return self._tokens[0]
+    def proc_id(self):
+        return self._tokens[1]
+    def partproc_from(self):
+        return self._tokens[2]
+    def partproc_to(self):
+        return self._tokens[4]
+    def identact_from(self):
+        return self._tokens[3]
+    def identact_to(self):
+        return self._tokens[5]
+    
+    def __str__(self):
+        #return "\t".join(self._tokens)
+        return "Edge %s/%s/%s/%s -> %s/%s " % (self.proc_area(), self.process(), 
+          self.partproc_from(), self.identact_from(), self.partproc_to(), self.identact_to())
+         
+    @classmethod 
+    def cmd(cls):
+        return 360  #  DEF_ERPCommandcreate_Constraint___
+
+class Activity(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+
+    def proc_id(self):
+        return self._tokens[1]
+    def partproc(self):
+        return self._tokens[2]
+    def act_pos(self):
+        return self._tokens[3]
+    def ident_act(self):
+        return self._tokens[5]
+    def __str__(self):
+        #return "\t".join(self._tokens)
+        return "Activitiy %s/%s/%s %s " % (self.processs(), self.partproc(), 
+          self.act_pos(), self.identact())
+         
+    @classmethod 
+    def cmd(cls):
+        return 365  #  DEF_ERPCommandcreate_Activity_____
+
+
+class PartProcess(BaseData):
     
     def __init__(self, tokens):
         BaseData.__init__(self, tokens)
@@ -29,13 +77,16 @@ class Process(BaseData):
         #return "\t".join(self._tokens)
         return "%s %s %s %s is_head=%s is_temp=%s" % (self._tokens[0], self._tokens[1], self._tokens[2], self._tokens[3], 
                                                       self.is_head(), self.is_temp())
-    
+    def proc_area(self):
+        return self._tokens[0]
+    def proc_id(self):
+        return self._tokens[1]
+    def partproc_id(self):
+        return self._tokens[2]
     def is_head(self):
         return self._tokens[16] == "1"
-    
     def is_temp(self):
         return self._tokens[0][0] == "C"
-        
     def material(self):
         mat = self._tokens[3]
         if self._tokens[4] != '':
@@ -48,12 +99,66 @@ class Process(BaseData):
     def cmd(cls):
         return 370  # DEF_ERPCommandcreate_Process______
 
+class Process:
+    def __init__(self, head_partproc):
+        self._head_ppid = head_partproc.partproc_id()
+        self._id = head_partproc.proc_id()
+        self._area =  head_partproc.proc_area()
+        self._partprocs = {self._head_ppid : head_partproc}
+        self._activities = {}
+        self._edges = []
+        
+    def is_temp(self):
+        return self._area[0] == "C"
+    def proc_area(self):
+        return self._area
+    def proc_id(self):
+        return self._id
+    def head_partproc(self):
+        return self._partprocs[self._head_ppid]
+    def material(self):
+        return self.head_partproc().material()
+    
+    def add_partproc(self, partproc):
+        self._partprocs[partproc.partproc_id()] = partproc
+    def add_activity(self, activity):
+        self._activities[activity.ident_act()] = activity
+    def add_edge(self, edge):
+        self._edges.append(edge)
+
+def build_procs(items):
+    procs = {}
+    partprocs = filter(lambda x: isinstance(x, PartProcess), items)
+    activities = filter(lambda x: isinstance(x, Activity), items)
+    edges = filter(lambda x: isinstance(x, Edge), items)
+    
+    for head_partproc in filter(lambda x: x.is_head(), partprocs):
+        new_proc = Process(head_partproc)
+        procs[new_proc.proc_id()] = new_proc
+    
+    for partproc in partprocs:
+        proc_id = partproc.proc_id()
+        if proc_id in procs:
+            procs[proc_id].add_partproc(partproc)
+    for act in activities:
+        proc_id = act.proc_id()
+        if proc_id in procs:
+            procs[proc_id].add_activity(act)
+    for edge in edges:
+        proc_id = edge.proc_id()
+        if proc_id in procs:
+            procs[proc_id].add_edge(edge)
+    return procs
+            
 def get_key_regex(classes):
     keys = map(lambda x: str(x.cmd()), classes)
     return re.compile(r"^2\t(%s)" % "|".join(keys))
 
 def parse_messagefile(messagefile, classes):
     items = []
+    cmd2Class = {}
+    for item in classes:
+        cmd2Class[item.cmd()] = item
     rgx_class = get_key_regex(classes)
     rgx_dataline = re.compile("^3\s+(.*)\n?")
     dataline = None
@@ -63,15 +168,16 @@ def parse_messagefile(messagefile, classes):
         hit = rgx_class.search(line)
         if hit:
             if dataline is not None:
-                items.append(Process(dataline.split('\t')))
+                cmd = int(hit.group(1))
+                type = cmd2Class[cmd]
+                items.append(type(dataline.split('\t')))
             dataline = None
         else:
             hit = rgx_dataline.search(line)
             if hit:
                 dataline = hit.group(1)
     return items
-            
-
+                        
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -91,19 +197,28 @@ def parse_arguments():
                       help="search pattern within logfile")
     """
     return parser.parse_args()
+    
 
 def main():
     """main function"""
     args = parse_arguments()
 
-    procs = parse_messagefile(args.message_file, [Process,])
-
-    temp_procs = filter(lambda x: x.is_temp() and x.is_head(), procs)
+    items = parse_messagefile(args.message_file, [PartProcess, Activity, Edge])
+    temp_procs2 = filter(lambda x: isinstance(x, PartProcess) and  x.is_temp() and x.is_head(), items)
+    p2 = sum(1 for _ in temp_procs2)
+    print("#p2=%d" % p2)
+    
+    procs = build_procs(items)
+    print("#procs=%d" % len(procs))
+    temp_procs = dict(filter(lambda x: x[1].is_temp(), procs.items()))
+    p1 = sum(1 for _ in temp_procs)
+    print("p1=%d" % p1)
+    
     #print ("#temp=%d" % len(items))
     
     materials = {}
     cnt = 0
-    for item in temp_procs:
+    for id, item in temp_procs.items():
         cnt += 1
         mat = item.material()
         if not mat in materials:
