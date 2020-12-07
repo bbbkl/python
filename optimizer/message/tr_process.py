@@ -75,7 +75,7 @@ class TrProcess(BaseItem):
                 'matrix_%', 'waiting_time_%', 'mrp_area', 'is_head', 'free_quantity',
                 'last_opt_type', 'last_opt_target', 'last_opt_time', 'lot', 'use_due_date',
                 'production_quantity_total', 'BG_ueber_Lager', 'process_area_orig', 'order_state', 'creation_date',
-                'stability', 'age', 'preserve_dynamic_buffer', 'due_date_time' ]
+                'stability', 'age', 'preserve_dynamic_buffer', 'due_date_time', 'is_plant_order' ]
 
 
 class Coverage(BaseItem):
