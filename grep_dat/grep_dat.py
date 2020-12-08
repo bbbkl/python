@@ -107,7 +107,13 @@ class Process:
         self._partprocs = {self._head_ppid : head_partproc}
         self._activities = {}
         self._edges = []
-        
+     
+    def edges(self):
+        return self._edges   
+    def act_cnt(self):
+        return len(self._activities)
+    def pproc_cnt(self):
+        return len(self._partprocs)
     def is_temp(self):
         return self._area[0] == "C"
     def proc_area(self):
@@ -210,6 +216,20 @@ def main():
     
     procs = build_procs(items)
     print("#procs=%d" % len(procs))
+    
+    act2proc = {}
+    for proc_id, proc in procs.items():
+        act_cnt = proc.act_cnt()
+        act2proc.setdefault(act_cnt, [])
+        act2proc[act_cnt].append(proc)
+    for cnt in sorted(act2proc):
+        for proc in act2proc[cnt]:
+            edges = proc.edges()
+            outer_edges = filter(lambda x: x.partproc_from() != x.partproc_to(), edges)
+            outer_cnt = sum(1 for _ in outer_edges)
+            print("#acts=%d pprocs=%d #aobs=%d #aobs_outer=%d proc=%s" % (cnt, proc.pproc_cnt(), len(edges), outer_cnt, proc.proc_id()))
+    sys.exit(0)
+    
     temp_procs = dict(filter(lambda x: x[1].is_temp(), procs.items()))
     p1 = sum(1 for _ in temp_procs)
     print("p1=%d" % p1)
