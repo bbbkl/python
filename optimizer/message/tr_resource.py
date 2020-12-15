@@ -90,4 +90,4 @@ class TrResource(BaseItem):
     def token_descriptions(self):
         return ['process_area', 'process', 'part_process', 'act_pos', 'res_pos',
                 'res_kind', 'res', 'ident_act', 'intensity', 'alt_group', 'base_res',
-                'selected_res', 'overload_used']
+                'selected_res', 'overload_used', 'multiple_choice']
