@@ -39,7 +39,7 @@ class Edge(BaseData):
     
     def __str__(self):
         #return "\t".join(self._tokens)
-        return "Edge %s/%s/%s/%s -> %s/%s " % (self.proc_area(), self.process(), 
+        return "Edge %s/%s/%s/%s -> %s/%s " % (self.proc_area(), self.proc_id(),
           self.partproc_from(), self.identact_from(), self.partproc_to(), self.identact_to())
          
     @classmethod 
@@ -58,16 +58,33 @@ class Activity(BaseData):
         return self._tokens[3]
     def ident_act(self):
         return self._tokens[5]
+    def mat_reservation_date(self):
+        return self._tokens[19]
     def __str__(self):
         #return "\t".join(self._tokens)
-        return "Activitiy %s/%s/%s %s " % (self.processs(), self.partproc(), 
-          self.act_pos(), self.identact())
+        return "Activitiy %s/%s/%s %s %s" % (self.proc_id(), self.partproc(), 
+          self.act_pos(), self.ident_act(), self.mat_reservation_date())
          
     @classmethod 
     def cmd(cls):
         return 365  #  DEF_ERPCommandcreate_Activity_____
 
+class ServerInfo(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
 
+    def sever_date(self):
+        return self._tokens[0]
+    def horizon_days(self):
+        return int(self._tokens[8])
+    def __str__(self):
+        #return "\t".join(self._tokens)
+        return "ServerInfo date=%s horizon_days=%d" % (self.sever_date(), self.horizon_days())
+         
+    @classmethod 
+    def cmd(cls):
+        return 150    # DEF_ERPCommandsetServer___________
+    
 class PartProcess(BaseData):
     
     def __init__(self, tokens):
@@ -87,6 +104,8 @@ class PartProcess(BaseData):
         return self._tokens[16] == "1"
     def is_temp(self):
         return self._tokens[0][0] == "C"
+    def use_duedate(self):
+        return self._tokens[22] == "1"
     def material(self):
         mat = self._tokens[3]
         if self._tokens[4] != '':
@@ -94,22 +113,28 @@ class PartProcess(BaseData):
         if self._tokens[15] != '':
             mat += "/%s" % self._tokens[15]
         return mat
+    def duedate(self):
+        return self._tokens[8]
     
     @classmethod 
     def cmd(cls):
         return 370  # DEF_ERPCommandcreate_Process______
 
 class Process:
-    def __init__(self, head_partproc):
-        self._head_ppid = head_partproc.partproc_id()
-        self._id = head_partproc.proc_id()
-        self._area =  head_partproc.proc_area()
-        self._partprocs = {self._head_ppid : head_partproc}
+    server_start = None
+    
+    def __init__(self, proc_id):
+        self._head_ppid = None #head_partproc.partproc_id()
+        self._id = proc_id
+        self._area =  None #head_partproc.proc_area()
+        self._partprocs = {} #self._head_ppid : head_partproc}
         self._activities = {}
         self._edges = []
      
     def edges(self):
         return self._edges   
+    def partprocs(self):
+        return self._partprocs
     def act_cnt(self):
         return len(self._activities)
     def pproc_cnt(self):
@@ -122,15 +147,27 @@ class Process:
         return self._id
     def head_partproc(self):
         return self._partprocs[self._head_ppid]
+    def duedate(self):
+        return self.head_partproc().duedate()
     def material(self):
         return self.head_partproc().material()
     
     def add_partproc(self, partproc):
         self._partprocs[partproc.partproc_id()] = partproc
+        if partproc.is_head():
+            self._head_ppid = partproc.partproc_id()
+            self._area = partproc.proc_area()
     def add_activity(self, activity):
         self._activities[activity.ident_act()] = activity
     def add_edge(self, edge):
         self._edges.append(edge)
+        
+    @classmethod 
+    def server_date(cls):
+        return Process.server_start  
+    @classmethod 
+    def set_server_date(cls, value):
+        Process.server_start = value
 
 def build_procs(items):
     procs = {}
@@ -138,14 +175,12 @@ def build_procs(items):
     activities = filter(lambda x: isinstance(x, Activity), items)
     edges = filter(lambda x: isinstance(x, Edge), items)
     
-    for head_partproc in filter(lambda x: x.is_head(), partprocs):
-        new_proc = Process(head_partproc)
-        procs[new_proc.proc_id()] = new_proc
-    
+    for server_info in filter(lambda x: isinstance(x, ServerInfo), items):
+        Process.set_server_date(server_info.sever_date())
     for partproc in partprocs:
         proc_id = partproc.proc_id()
-        if proc_id in procs:
-            procs[proc_id].add_partproc(partproc)
+        procs.setdefault(proc_id, Process(proc_id))
+        procs[proc_id].add_partproc(partproc)
     for act in activities:
         proc_id = act.proc_id()
         if proc_id in procs:
@@ -183,7 +218,84 @@ def parse_messagefile(messagefile, classes):
             if hit:
                 dataline = hit.group(1)
     return items
-                        
+   
+def show_paths(procs):
+    for proc in procs.values():
+        edges = filter(lambda x: x.partproc_from() != x.partproc_to(), proc.edges())
+    nodes = set()
+    successors = {}
+    predecessors = {}
+    candidates = []
+    paths = []
+    for edge in edges:
+        pp_from = edge.partproc_from()
+        pp_to = edge.partproc_to()
+        nodes.add(pp_from)
+        nodes.add(pp_to)
+        
+        successors.setdefault(pp_from, []).append(pp_to)
+        predecessors.setdefault(pp_to, []).append(pp_from)
+    for node in filter(lambda x: x not in successors, nodes):
+        candidates.append([node,])
+    while candidates:
+        curr = candidates.pop()
+        leftmost = curr[0]
+        if not leftmost in predecessors:
+            paths.append(curr)
+        else:
+            for node in predecessors[leftmost]:
+                candidates.append([node] + curr)
+    
+    
+    rootToNodes = {}
+    for path in paths:
+        root = path[-1]
+        rootToNodes.setdefault(root, set()).update(path)
+    
+    rootOverlapsWith = {}
+    #rootOverlapNodes = {}
+    for lhs in rootToNodes:
+        nodes_lhs = rootToNodes[lhs]
+        for rhs in rootToNodes:
+            if lhs != rhs:
+                nodes_rhs = rootToNodes[rhs]
+                mix = nodes_lhs.intersection(nodes_rhs)
+                if mix:
+                    rootOverlapsWith.setdefault(lhs, set()).add(rhs)
+                    print("root1=%s root2=%s %s" % (lhs, rhs, mix))
+    
+    #print(rootOverlapsWith)
+    
+    prev_root = None
+    for path in paths:
+        root = path[-1]
+        if root != prev_root:
+            print(40 * "=")
+            nodes = sorted(rootToNodes[root])
+            print("partprocs of partproc %s with duedate #partprocs=%d isolated=%s\n%s\n" % 
+                  (root, len(nodes), "0" if root in rootOverlapsWith else "1", nodes))
+            prev_root = root
+        print(path)
+     
+        
+def show_timebounds(items):
+    server_info =  next(x for x in items if isinstance(x, ServerInfo))
+    server_date = server_info.sever_date()
+    activities = filter(lambda x: isinstance(x, Activity), items)
+    special_acts = filter(lambda x: x.mat_reservation_date() != server_date, activities)
+    print("server date=%s" % server_date)
+    for act in special_acts:
+        print(act)
+        
+def date_less_eq(date1, date2):
+    if date1[6:10] < date2[6:10]: return True
+    if date1[6:10] > date2[6:10]: return False
+    if date1[3:4] < date2[3:4]: return True
+    if date1[3:4] > date2[3:4]: return False
+    if date1[0:1] < date2[0:1]: return True
+    if date1[0:1] > date2[0:1]: return False
+    return True   
+                     
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -209,37 +321,43 @@ def main():
     """main function"""
     args = parse_arguments()
 
-    items = parse_messagefile(args.message_file, [PartProcess, Activity, Edge])
-    temp_procs2 = filter(lambda x: isinstance(x, PartProcess) and  x.is_temp() and x.is_head(), items)
-    p2 = sum(1 for _ in temp_procs2)
-    print("#p2=%d" % p2)
-    
+    items = parse_messagefile(args.message_file, [PartProcess, Activity, Edge, ServerInfo])
     procs = build_procs(items)
-    print("#procs=%d" % len(procs))
+
+    if 0: # stadler timebounds
+        show_timebounds(items)
+        sys.exit(0)
     
-    act2proc = {}
-    for proc_id, proc in procs.items():
-        act_cnt = proc.act_cnt()
-        act2proc.setdefault(act_cnt, [])
-        act2proc[act_cnt].append(proc)
-    for cnt in sorted(act2proc):
-        for proc in act2proc[cnt]:
-            edges = proc.edges()
-            outer_edges = filter(lambda x: x.partproc_from() != x.partproc_to(), edges)
-            outer_cnt = sum(1 for _ in outer_edges)
-            print("#acts=%d pprocs=%d #aobs=%d #aobs_outer=%d proc=%s" % (cnt, proc.pproc_cnt(), len(edges), outer_cnt, proc.proc_id()))
-    sys.exit(0)
+    if 1:
+        show_paths(procs)
+        return 0
+        
+    if 0: # wds monster procs
+        act2proc = {}
+        for proc in procs.values():
+            act_cnt = proc.act_cnt()
+            act2proc.setdefault(act_cnt, [])
+            act2proc[act_cnt].append(proc)
+        for cnt in sorted(act2proc):
+            for proc in act2proc[cnt]:
+                edges = proc.edges()
+                # for edge in edges: print("from=%s to=%s" % (edge.partproc_from(), edge.partproc_to()))
+                outer_edges = filter(lambda x: x.partproc_from() != x.partproc_to(), edges)
+                outer_cnt = sum(1 for _ in outer_edges)
+                use_duedate_cnt = sum(1 for _ in  filter(lambda x: x.use_duedate(), proc.partprocs().values()))
+                pp_mat_cnt = proc.pproc_cnt() - use_duedate_cnt
+                print("#acts=%d pprocs=%d #pp_with_duedate=%d #pp_mat=%d #aobs=%d #aobs_outer=%d proc=%s" % 
+                      (cnt, proc.pproc_cnt(), use_duedate_cnt, pp_mat_cnt, len(edges), outer_cnt, proc.proc_id()))
+        sys.exit(0)
     
     temp_procs = dict(filter(lambda x: x[1].is_temp(), procs.items()))
-    p1 = sum(1 for _ in temp_procs)
-    print("p1=%d" % p1)
-    
-    #print ("#temp=%d" % len(items))
+    temp_proc_cnt = sum(1 for _ in temp_procs)
     
     materials = {}
-    cnt = 0
-    for id, item in temp_procs.items():
-        cnt += 1
+    temp_past_dd_cnt = 0
+    for item in temp_procs.values():
+        if date_less_eq(item.duedate(), Process.server_date()):
+            temp_past_dd_cnt += 1
         mat = item.material()
         if not mat in materials:
             materials.setdefault(mat, 0)
@@ -247,13 +365,16 @@ def main():
 
     single_mats = filter(lambda x: materials[x] == 1, materials)
     cnt_single_mat = sum(1 for _ in single_mats)
+    
+    print("\ntotal number of #procs=%d" % len(procs) )
+    print("#temp_procs=%d (%0.1f %% of all procs)" % (temp_proc_cnt, 100 * temp_proc_cnt / len(procs)))
+    print("#temp procs with due date <= server time=%d (%0.1f %%)" % (temp_past_dd_cnt, 100 * temp_past_dd_cnt / temp_proc_cnt))
+    print("temp procs produce number of different materials: #mat=%d" % len(materials))
+    print("number of materials produced only once by a temp proc: #mat_single=%d (%0.1f %%)" % (cnt_single_mat, cnt_single_mat*100/len(materials))) 
      
-    for mat, mat_cnt in sorted(materials.items(), key=operator.itemgetter(1)):
+    print("\n\npart/mrp_area    #temp_procs which produce this part")
+    for mat, mat_cnt in sorted(materials.items(), key=operator.itemgetter(1), reverse=True):
         print("%s    %d" % (mat, mat_cnt)) 
-        
-    print("\n#procs=%d" % len(procs) )
-    print("#temp_mat=%d #mat=%d %0.1f" % (cnt, len(materials), cnt / len(materials)))
-    print("#temp_mat which occur only once=%d %0.1f" % (cnt_single_mat, cnt_single_mat*100/len(materials)))
     
 if __name__ == "__main__":
     try:
