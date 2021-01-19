@@ -30,7 +30,7 @@ class MbResOverl(BaseItem):
         return ['DEF_APSCommandcreate_MB_RessOverl_', ]
 
     def token_descriptions(self):
-        return ['ident_act', 'pos', 'mit_Ueberlast', 'part_process', 'process_area']
+        return ['ident_act', 'pos', 'with_overload', 'part_process', 'process_area']
     
 
 class MaSelUebRess(BaseItem):
