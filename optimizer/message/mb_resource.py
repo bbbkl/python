@@ -80,3 +80,38 @@ class MResourceKombination(BaseItem):
 
     def token_descriptions(self):
         return [ 'res_type_machine', 'res_machine', 'res_type_tool', 'res_tool' ]
+
+class PoolSelection(BaseItem):
+    """One pool selection"""
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+
+    def process_area(self):
+        """get process area"""
+        return self._tokens[0]
+
+    def partproc_id(self):
+        """get partproc id"""
+        return self._tokens[1]
+
+    def ident_akt(self):
+        """get activity id"""
+        return self._tokens[2]
+
+    def resource(self):
+        """get resource id"""
+        return self._tokens[5]
+
+    def headline_ids(self):
+        """get headline for explained mode"""
+        return "%s %s %s" % (self.partproc_id(), self.ident_akt(), self.resource())
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_APSCommandcreate_PoolSelection', ]
+
+    def token_descriptions(self):
+        return ['process_area', 'part_process', 'ident_act', 'pool_res_pos', 'res_kind', 'selected_res', \
+                'with_overload', 'start_date', 'start_time', 'end_date', 'end_time']
+
+

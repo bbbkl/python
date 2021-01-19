@@ -238,6 +238,7 @@
 #define DEF_APSCommandcreate_SchedTrigger_  825 //!< send demand proxy information
 #define DEF_APSCommandackSolutionResult___  826 //!< sent after solution block has been sent 
 
+#define DEF_APSCommandcreate_PoolSelection  838 //!< sending resource constraint pool selection
 #define DEF_APSCommandcreate_ContTimePoint  839 //!< sending information about continuous demand/supply
 #define DEF_APSCommandcreate_MB_Aktivitaet  840 //!< sending activity data to ERP
 #define DEF_APSCommandcreate_MB_Ressource_  841 //!< sending resource constraint (chosen alternative) to ERP
