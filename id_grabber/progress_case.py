@@ -141,11 +141,21 @@ def rename_or_copy_related_logs(path_prefix, idx):
     """get latest two files which match search pattern, rename them"""
     files = glob(path_prefix + "*log")
     num_targets = min(2, len(files))
+    res = []
     if num_targets:
         targets = reversed(files[-num_targets:])
         for name in targets:
             rename_or_copy(name, idx)
-        
+            res.append(name)
+    return res
+
+def report(logfile, related_logs, idx):
+    out = open(logfile + "_report", "a")
+    out.write("%d\n" % idx)
+    for item in related_logs:
+        out.write("\t%s\n" % item)
+    out.close()
+
 def rename_or_copy(filename, idx, n = 10):
     """try for n seconds to rename file, otherwise copy it"""
     dst = os.path.join(os.path.dirname(filename), "%d.%s" % (idx, os.path.basename(filename)))
@@ -155,7 +165,6 @@ def rename_or_copy(filename, idx, n = 10):
             return
         except:
             n -= 1
-            print(n)
             if n < 0:
                 break
             time.sleep(1)
@@ -178,7 +187,8 @@ def supervise_logfile(logfile, path_pfx, start_idx, sleep_secs=10):
         if found:
             print("line idx=%d" % found)
             found_items.append(found)
-            rename_or_copy_related_logs(path_pfx, found)
+            related_logs = rename_or_copy_related_logs(path_pfx, found)
+            report(logfile, related_logs, found)
             start_idx = found + 20
 
         found = search_log(logfile, start_idx, keywords)
