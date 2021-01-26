@@ -2,6 +2,7 @@
 # file: BaseItem.py
 #
 # description
+from pickle import NONE
 """\n\n
     Base class for activity, ...
 """
@@ -47,6 +48,8 @@ class Edge(BaseData):
         return 360  #  DEF_ERPCommandcreate_Constraint___
 
 class Activity(BaseData):
+    _server_date = None
+    
     def __init__(self, tokens):
         BaseData.__init__(self, tokens)
 
@@ -60,11 +63,30 @@ class Activity(BaseData):
         return self._tokens[5]
     def mat_reservation_date(self):
         return self._tokens[19]
+    def is_foreign(self):
+        """foreign work = Fremdarbeit"""
+        return self._tokens[4] == '1'
+    def is_done(self):
+        return self._tokens[29] == '1'
+    def is_frozen(self):
+        return self._tokens[16] == '1'
+    def has_duedate(self):
+        return len(self._tokens) >= 43 and self._tokens[43] != '?'
+    def duedate(self):
+        return self._tokens[43]
     def __str__(self):
         #return "\t".join(self._tokens)
-        return "Activitiy %s/%s/%s %s %s" % (self.proc_id(), self.partproc(), 
-          self.act_pos(), self.ident_act(), self.mat_reservation_date())
+        reservation = " reservation=" + self.mat_reservation_date() if self.server_date() != self.mat_reservation_date() else ""
+        duedate = " duedate=" + self.duedate() if self.has_duedate() else ""
+        return "Activitiy %s/%s/%s %s%s%s" % (self.proc_id(), self.partproc(), 
+          self.act_pos(), self.ident_act(), reservation, duedate)
          
+    @classmethod
+    def server_date(cls):
+        return cls._server_date
+    @classmethod
+    def set_server_date(cls, date):     
+        cls._server_date = date
     @classmethod 
     def cmd(cls):
         return 365  #  DEF_ERPCommandcreate_Activity_____
@@ -252,6 +274,7 @@ def show_paths(procs):
         root = path[-1]
         rootToNodes.setdefault(root, set()).update(path)
     
+    print("common partprocs of two root partprocs with duedate")
     rootOverlapsWith = {}
     #rootOverlapNodes = {}
     for lhs in rootToNodes:
@@ -285,6 +308,15 @@ def show_timebounds(items):
     special_acts = filter(lambda x: x.mat_reservation_date() != server_date, activities)
     print("server date=%s" % server_date)
     for act in special_acts:
+        print(act)
+        
+def show_forein_acts(items):
+    server_info =  next(x for x in items if isinstance(x, ServerInfo))
+    Activity.set_server_date(server_info.sever_date())
+    activities = filter(lambda x: isinstance(x, Activity), items)
+    forein_acts = filter(lambda x: x.is_foreign() and x.has_duedate() and not (x.is_frozen() or x.is_done()), activities)
+    print("foreing 'lively' activities with own due date")
+    for act in forein_acts:
         print(act)
         
 def date_less_eq(date1, date2):
@@ -323,6 +355,10 @@ def main():
 
     items = parse_messagefile(args.message_file, [PartProcess, Activity, Edge, ServerInfo])
     procs = build_procs(items)
+
+    if 1:
+        show_forein_acts(items)
+        sys.exit(0)
 
     if 0: # stadler timebounds
         show_timebounds(items)
