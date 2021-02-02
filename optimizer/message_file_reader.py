@@ -17,7 +17,7 @@ from message.command_with_params import Command_OptimizeCTP
 from message.serverinfo import ServerInfo, CheckErpID, P_ZeitMngEinh, LicInfo
 from message.mb_activity import MbActivity, ActDispatch, ActSplit, BufferInfo
 from message.mb_resoverl import MbResOverl, MaSelUebRess
-from message.mb_resource import MbResource, MResourceKombination, PoolSelection
+from message.mb_resource import MbResource, MResourceKombination, PoolSelection, ResReserved
 from message.m_serverkennz import MServerKennz
 from message.tr_activity import TrActivity
 from message.md_artikel import MD_Artikel
@@ -355,7 +355,7 @@ def get_id_to_class_mapping():
         id_to_class_mapping = {}
         classes = [MD_Artikel, SArticle, ServerInfo, P_ZeitMngEinh, LicInfo, TrActivity,
                    MbActivity, ActDispatch, ActSplit, BufferInfo, MbResOverl, MaSelUebRess,
-                   MbResource, MResourceKombination, PoolSelection,
+                   MbResource, MResourceKombination, PoolSelection, ResReserved,
                    MServerKennz, M_DispoBew,
                    S_BetriebKal, M_Kalender, M_KalenderZeit, M_IntKalender,
                    M_KalDatum, UpdateCalendar,

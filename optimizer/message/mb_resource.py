@@ -86,13 +86,36 @@ class PoolSelection(BaseItem):
     def __init__(self, tokens, command):
         BaseItem.__init__(self, tokens, command)
 
-    def process_area(self):
-        """get process area"""
+    def ident_akt(self):
+        """get activity id"""
         return self._tokens[0]
 
-    def partproc_id(self):
-        """get partproc id"""
-        return self._tokens[1]
+    def resource(self):
+        """get resource id"""
+        return self._tokens[4]
+
+    def time_range(self):
+        """return from - to but only dates"""
+        idx = 5
+        return "%s - %s" % (self._tokens[idx], self._tokens[idx+2])
+
+    def headline_ids(self):
+        """get headline for explained mode"""
+        return "%s %s %s" % (self.ident_akt(), self.resource(), self.time_range())
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_APSCommandcreate_PoolSelection', ]
+
+    def token_descriptions(self):
+        return ['ident_act', 'is_temporary', 'pool_res_pos', 'res_kind', 'selected_res', \
+                'start_date', 'start_time', 'end_date', 'end_time']
+
+
+class ResReserved(BaseItem):
+    """One pool selection"""
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
 
     def ident_akt(self):
         """get activity id"""
@@ -102,16 +125,20 @@ class PoolSelection(BaseItem):
         """get resource id"""
         return self._tokens[5]
 
+    def time_range(self):
+        """return from - to but only dates"""
+        idx = 5
+        return "%s - %s" % (self._tokens[idx], self._tokens[idx+2])
+
     def headline_ids(self):
         """get headline for explained mode"""
-        return "%s %s %s" % (self.partproc_id(), self.ident_akt(), self.resource())
+        return "%s %s %s" % (self.ident_akt(), self.resource(), self.time_range())
 
     @classmethod
     def commands(cls):
-        return ['DEF_APSCommandcreate_PoolSelection', ]
+        return ['DEF_ERPCommandcreate_ResReserved__', ]
 
     def token_descriptions(self):
-        return ['process_area', 'part_process', 'ident_act', 'pool_res_pos', 'res_kind', 'selected_res', \
-                'with_overload', 'start_date', 'start_time', 'end_date', 'end_time']
-
-
+        return ['ident_act', 'is_temporary', 'res_kind', 'res',      
+                'start_date', 'start_time', 'end_date', 'end_time']
+    

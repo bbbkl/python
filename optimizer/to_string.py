@@ -191,7 +191,8 @@ class ToString(object):
            EResourceTypeERP_ProcedureERP  = 5,
            EResourceTypeERP_FloorERP      = 6,
            EResourceTypeERP_WorkPlaceERP  = 7,
-           EResourceTypeERP_MaterialERP   = 8"""
+           EResourceTypeERP_EmployeePool  = 8,
+           EResourceTypeERP_MaterialERP   = 9"""
         val = to_int(val)
         if val == -100: return 'Betriebskalender'
         if val == 1: return 'Maschine'
@@ -201,7 +202,8 @@ class ToString(object):
         if val == 5: return 'Verfahren'
         if val == 6: return 'Flaeche'
         if val == 7: return 'Arbeitsplatz'
-        if val == 8: return 'Material'
+        if val == 8: return 'Pool'
+        if val == 9: return 'Material'
         return 'undefined'
     
     @classmethod

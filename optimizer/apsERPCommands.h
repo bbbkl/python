@@ -167,6 +167,7 @@
 #define DEF_ERPCommandcreate_MC_Lager_____  342 //!< used to receive denoted data type
 
 #define DEF_ERPCommandcreate_Resource_____  350 //!< used to receive denoted data type (resource cosntraint)
+#define DEF_ERPCommandcreate_ResReserved__  351 //!< resource is reserved on a given activity and timeslot
 #define DEF_ERPCommandcreate_Material_____  355 //!< used to receive denoted data type (material constraint)
 #define DEF_ERPCommandcreate_Constraint___  360 //!< used to receive denoted data type (precedence constraint)
 #define DEF_ERPCommandcreate_TimeConst____  361 //!< used to receive denoted data type (timebound constraint)
