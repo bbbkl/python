@@ -47,6 +47,20 @@ class Edge(BaseData):
     def cmd(cls):
         return 360  #  DEF_ERPCommandcreate_Constraint___
 
+class ResReserved(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+        
+    def __str__(self):
+        #return "\t".join(self._tokens)
+        tkn = self._tokens
+        return "ResReserve identAct=%s res=%s manual=%s   start=%s/%s end=%s/%s " %  \
+            (tkn[0], tkn[3], tkn[8], tkn[4], tkn[5], tkn[6], tkn[7]) 
+         
+    @classmethod 
+    def cmd(cls):
+        return 351  #  DEF_ERPCommandcreate_ResReserved__
+
 class Activity(BaseData):
     _server_date = None
     
@@ -242,6 +256,7 @@ def parse_messagefile(messagefile, classes):
     return items
    
 def show_paths(procs):
+    print("#PROCS=%d" % len(procs))
     for proc in procs.values():
         edges = filter(lambda x: x.partproc_from() != x.partproc_to(), proc.edges())
     nodes = set()
@@ -249,7 +264,9 @@ def show_paths(procs):
     predecessors = {}
     candidates = []
     paths = []
+    no_edge = 1
     for edge in edges:
+        no_edge = 0
         pp_from = edge.partproc_from()
         pp_to = edge.partproc_to()
         nodes.add(pp_from)
@@ -257,6 +274,7 @@ def show_paths(procs):
         
         successors.setdefault(pp_from, []).append(pp_to)
         predecessors.setdefault(pp_to, []).append(pp_from)
+        
     for node in filter(lambda x: x not in successors, nodes):
         candidates.append([node,])
     while candidates:
@@ -300,6 +318,10 @@ def show_paths(procs):
             prev_root = root
         print(path)
      
+    for proc in procs.values():
+        if len(proc.edges()) == 0:
+            pps = ','.join(proc.partprocs().keys())
+            print("Isolated proc=%s partprocs=%s" % (proc.proc_id(), pps))
         
 def show_timebounds(items):
     server_info =  next(x for x in items if isinstance(x, ServerInfo))
@@ -352,11 +374,16 @@ def parse_arguments():
 def main():
     """main function"""
     args = parse_arguments()
+ 
+    for item in parse_messagefile(args.message_file, [ResReserved,]):
+        print(item)
+    return 0
+
 
     items = parse_messagefile(args.message_file, [PartProcess, Activity, Edge, ServerInfo])
     procs = build_procs(items)
 
-    if 1:
+    if 0:
         show_forein_acts(items)
         sys.exit(0)
 
@@ -366,7 +393,7 @@ def main():
     
     if 1:
         show_paths(procs)
-        return 0
+        return 1
         
     if 0: # wds monster procs
         act2proc = {}
