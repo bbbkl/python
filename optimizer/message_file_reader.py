@@ -29,7 +29,7 @@ from message.xcalendar import S_BetriebKal, M_Kalender, M_KalenderZeit, M_IntKal
 from message.tr_resource import TrResource
 from message.m_resource import M_Resource, M_ResAlt, M_ResAltGroup
 from message.tr_process import TrProcess, Coverage
-from message.tr_material import TrMaterial
+from message.tr_material import TrMaterial, TrOverloadMaterial, TrOverloadResource, TrUpdateResource
 from message.tr_constraint import TrConstraint
 from message.tr_processcst import TrProcessCst
 from message.tr_timeconst import TrTimeConst
@@ -361,7 +361,8 @@ def get_id_to_class_mapping():
                    M_KalDatum, UpdateCalendar,
                    TrResource, M_Resource, M_ResAlt, M_ResAltGroup, UpdateResource,
                    TrProcess, Coverage,
-                   TrMaterial, TrConstraint, TrProcessCst, McLager, McCharge, McArt, MRessGruppe,
+                   TrMaterial, TrOverloadMaterial, TrOverloadResource, TrUpdateResource,
+                   TrConstraint, TrProcessCst, McLager, McCharge, McArt, MRessGruppe,
                    TrTimeConst,
                    ML_ArtOrt, ML_ArtOrtVar, M_UebOrt, M_UebAdresse, CheckErpID, TrStock, TrSafetyStock, TrStockFromMLArtOrtKomm,
                    ReasonMaterial, ReasonResource, ReasonResRes, ReasonTimebound, ReasonStructure, ReasonAdmin,

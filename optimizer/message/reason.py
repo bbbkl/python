@@ -314,11 +314,19 @@ class Reason(BaseItem):
     def reason_type(self):
         return int(self._tokens[5])
 
+    def verbose_verification_state(self, tokens):
+        key = 'verification_state'
+        if key in self.token_descriptions():
+            idx = self.token_descriptions().index(key)
+            if idx < len(tokens) and tokens[idx] != '1':
+                self.verbose_token(idx, ToString.reason_verification_state, tokens) 
+            
     def verbose_tokens(self):
         """possibility to enrich some cryptic values with their human readable description"""
         tokens = list(self._tokens)
         self.verbose_token(0, ToString.scheduling_obj_type, tokens)
         self.verbose_token(5, ToString.reason_type, tokens)
+        self.verbose_verification_state(tokens)
         return tokens
 
     @classmethod
@@ -330,7 +338,7 @@ class Reason(BaseItem):
                 'transmission_id', 'reason_type', 'tardiness', 'earliest_end_date', 'earliste_end_time']
         
         if self.reason_type() == 20: # Structure
-            res.extend(['subtype',])
+            res.extend(['subtype'])
         elif self.reason_type() == 30: # timebound
             res.extend(['timebound_date', 'timebound_time', 'subtype', 'details'])
         elif self.reason_type() == 40: # res
@@ -344,6 +352,8 @@ class Reason(BaseItem):
             res.extend(['res1_kind', 'res1', 'res2_kind', 'res2'])
         else:
             res.extend(['par10', 'par11', 'par12', 'par13', 'par14', 'par15', 'par16', 'par17'])
+
+        res.extend(['verification_state',])
 
         return res
 

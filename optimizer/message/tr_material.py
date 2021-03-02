@@ -45,3 +45,56 @@ class TrMaterial(BaseItem):
                 'ident_act', 'mrp_area', 'Zeilenart', 'Belegart_Herkunft',
                 'Schluessel_Herkunft', 'lot', 'demand_quantity_total', 'continious', 'cro',
                 'reservation']
+
+
+class TrOverloadMaterial(BaseItem):
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+
+    def part(self):
+        return self._tokens[0]
+    
+    def variant(self):
+        return self._tokens[1]
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_ERPCommandcreate_Overload_Mat_', ]
+
+    def token_descriptions(self):
+        return ['part', 'part_variant']
+
+class TrOverloadResource(BaseItem):
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+
+    def res_art(self):
+        return self._tokens[0]
+    
+    def res(self):
+        return self._tokens[1]
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_ERPCommandcreate_Overload_Res_', ]
+
+    def token_descriptions(self):
+        return ['res_kind', 'res']
+    
+    
+class TrUpdateResource(BaseItem):
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+    
+    def res_art(self):
+        return self._tokens[0]
+    
+    def res(self):
+        return self._tokens[1]
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_ERPCommandupdateRessource_____', ]
+
+    def token_descriptions(self):
+        return ['res_kind', 'res']

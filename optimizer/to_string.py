@@ -53,6 +53,26 @@ class ToString(object):
         return 'undefined'
         
     @classmethod
+    def reason_verification_state(cls, val):
+        """
+        EReasonVerificationState
+          NotYetProcessed,
+          Reason,
+          ReasonNotComplete,
+          Unproven,
+          NotAReason,
+          NotComputed_Unnecessary
+        """
+        val = to_int(val)
+        if val == 0: return 'NotYetProcessed'
+        if val == 1: return 'Reason'
+        if val == 2: return 'ReasonNotComplete'
+        if val == 3: return 'Unproven'
+        if val == 4: return 'NotAReason'
+        if val == 5: return 'NotComputed_Unnecessary'
+        return 'undefined'
+        
+    @classmethod
     def scheduling_obj_type(cls, val):
         """Scheduling type 
            Undefined = -1,

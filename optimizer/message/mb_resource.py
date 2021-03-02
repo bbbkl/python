@@ -119,20 +119,24 @@ class ResReserved(BaseItem):
 
     def ident_akt(self):
         """get activity id"""
-        return self._tokens[2]
+        return self._tokens[0]
 
     def resource(self):
         """get resource id"""
-        return self._tokens[5]
+        return self._tokens[3]
 
     def time_range(self):
         """return from - to but only dates"""
-        idx = 5
+        idx = 4
         return "%s - %s" % (self._tokens[idx], self._tokens[idx+2])
+
+    def manual(self):
+        return self._tokens[8] == "1"
 
     def headline_ids(self):
         """get headline for explained mode"""
-        return "%s %s %s" % (self.ident_akt(), self.resource(), self.time_range())
+        manual = " manual" if self.manual() else ""
+        return "%s %s %s%s" % (self.ident_akt(), self.resource(), self.time_range(), manual)
 
     @classmethod
     def commands(cls):
@@ -140,5 +144,5 @@ class ResReserved(BaseItem):
 
     def token_descriptions(self):
         return ['ident_act', 'is_temporary', 'res_kind', 'res',      
-                'start_date', 'start_time', 'end_date', 'end_time']
+                'start_date', 'start_time', 'end_date', 'end_time', 'manual']
     
