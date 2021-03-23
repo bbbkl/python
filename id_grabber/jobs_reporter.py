@@ -142,6 +142,29 @@ class PerformanceTrace:
         listener = (end - mid2).total_seconds()
         return (int(startup), int(mid), int(listener))
 
+    def strip_timestamp(self, line):
+        pos = line.find('|')
+        if pos != -1:
+            return line[pos:]
+        return line
+
+    def compress(self):
+        start_idx = 0
+        key = None
+        cluster = []
+        for idx, line in enumerate(self._lines):
+            short_line = self.strip_timestamp(line)
+            if short_line == key:
+                continue
+            if idx - start_idx > 5:
+                cluster.append((start_idx, idx-1))
+            start_idx = idx
+            key = short_line
+        cluster.reverse()
+        for idx_start, idx_end in cluster:
+            self._lines[idx_start + 1] = "... %dx\n" % (idx_end - idx_start + 1)
+            del self._lines[idx_start + 2 : idx_end]
+        
     def elapsed_total(self):
         start = get_datetime(self._lines[0])
         end = get_datetime(self._lines[self.get_last_line_idx()])
@@ -152,6 +175,7 @@ class PerformanceTrace:
         return self._job
 
     def __str__(self):
+        self.compress()
         return ''.join(self._lines)
 
 def have_change_job_line(logfile, code):
