@@ -17,7 +17,11 @@ import RegressionUtil
 VERSION = '1.0'
 
 def get_datetime_from_string(str_time):
-    return datetime.strptime(str_time, '%d.%m.%Y %H:%M:%S')
+    try:
+        return datetime.strptime(str_time, '%d.%m.%Y %H:%M:%S')
+    except:
+        print("failed input str_time=%s" % str_time)
+        return -1
 
 def pretty_format_secs(seconds):
     if seconds == -1:
@@ -283,7 +287,8 @@ class RegressionLogfile:
         """differnce last - first timestamp"""
         if logfile is None or not os.path.exists(logfile):
             return -1
-        rgx_time = re.compile(r'^(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\:\d{2}\:\d{2})')
+        # thread id prefix before timestamp
+        rgx_time = re.compile(r'^\d*\|?(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\:\d{2}\:\d{2})')
         ts1 = ts2 = None
         for line in open(logfile, encoding=self.get_encoding(logfile)):
             hit = rgx_time.search(line)
