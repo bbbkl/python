@@ -23,7 +23,7 @@ def diff_activities(filename1, filename2):
 def get_proc_to_line(filename):
     """read result file, return dict: proc_id -> line"""
     result = {}
-    rgx_proc_id = re.compile(r"^[A-Z]+\s+([^;]+);")
+    rgx_proc_id = re.compile(r"^[A-Z]+(?:/|\s+)([^;]+);")
     ordered_ids = []
     for line in open(filename):
         # """PPA    AP-04076522-0030;2011-07-29 00:00:00;2011-07-27 07:34:00;2011-08-02 06:40:00;885465"""
