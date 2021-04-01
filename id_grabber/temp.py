@@ -9,6 +9,7 @@
 import re
 from argparse import ArgumentParser
 import os.path
+import shutil
 
 VERSION = '0.1'
 
@@ -51,6 +52,19 @@ def grep_keys(filename):
         if not key in res1:
             print("new res2 key=%s val=%s" % (key, res2[key])) 
         
+        
+def create_sample():
+    base = r"D:\work\parallel_reasons\simple_tardy20\sync.single_tardy20.dat000"
+    ctp = r"D:\work\parallel_reasons\simple_tardy20\sync.single_tardy20.dat001"
+    
+    dst = r"D:\work\parallel_reasons\simple_tardy20\simple_tardy20.dat"
+    shutil.copyfile(base, dst)
+    out = open(dst, "a")
+    for i in range(0, 10000):
+        instream = open(ctp, "r")
+        out.write(instream.read()) 
+    out.close()
+    
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -75,7 +89,8 @@ def main():
     """main function"""
     args = parse_arguments()
 
-    grep_keys(args.message_file)
+    #grep_keys(args.message_file)
+    create_sample()
     
     """
     diff_dict = grep_longfiles(args.message_file)
