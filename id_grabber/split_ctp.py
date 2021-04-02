@@ -1,7 +1,7 @@
 # -*- coding: ISO-8859-1 # Encoding declaration -*-
 # file: split_ctp.py
 #
-# description
+DESCRIPTION =\
 """\n\n
     split given messagefile into separate ctp parts
 """
@@ -9,6 +9,7 @@
 import os.path
 from argparse import ArgumentParser
 import re
+from glob import glob
 
 VERSION = '0.1'
 
@@ -39,7 +40,19 @@ def get_start_rgx():
 def get_start_rgx_no_dataline():
     return re.compile(r"^(Optimizerversion:|Start\-Config|4\t1\s|2\t250)")
 
-def split_ctp(filename):
+def strip_many(dir_name):
+    for item in glob(dir_name + "/*.dat"):
+        strip(item)
+
+def strip(filename):
+    dst = split_ctp(filename, 1)
+    if os.path.exists(dst):
+        tmp_name = filename + '_tmp'
+        os.rename(filename, tmp_name)
+        os.rename(dst, filename)
+        os.unlink(tmp_name)
+
+def split_ctp(filename, strip_1st=0):
     """split filename into startup, ctp_001, ctp_002, ..."""
     cnt = 0
     fn_out = filename + '%03d' % cnt
@@ -64,6 +77,8 @@ def split_ctp(filename):
                 out.write("%s" % prev_line)
                 prev_line = None
             out.close()
+            if strip_1st:
+                break
             fn_out = filename + '%03d' % cnt
             out = open(fn_out, 'w', encoding=encoding_id)
             cnt += 1
@@ -76,13 +91,20 @@ def split_ctp(filename):
         out.write("%s" % prev_line)
         
     out.close()
+    if strip_1st:
+        return fn_out
 
 def parse_arguments():
     """parse arguments from command line"""
-    #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=DESCRIPTION)
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('message_file', metavar='message_file', help='input message file')
+    parser.add_argument('-s', '--strip', action="store_true", # or stare_false
+                      dest="strip", default=False, # negative store value
+                      help="strip sync/opti in place")
+    parser.add_argument('-m', '--strip_many', action="store_true", # or stare_false
+                      dest="strip_many", default=False, # negative store value
+                      help="treat message_file as directory and strip all containted *.dat files")
     return parser.parse_args()
 
 def main():
@@ -90,7 +112,12 @@ def main():
     args = parse_arguments()
     filename = args.message_file
 
-    split_ctp(filename)
+    if args.strip:
+        strip(filename)
+    elif args.strip_many:
+        strip_many(filename)
+    else:
+        split_ctp(filename)
 
 if __name__ == "__main__":
     try:
