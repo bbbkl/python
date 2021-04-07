@@ -86,6 +86,9 @@ class ReasonSet():
             raise RegressionReasonException("reason key=%s occurs twice" % key)
         self._reasons[key] = reason
 
+    def contains_reason(self, key):
+        return key in self._reasons
+
     def get_reason(self, key):
         if key in self._reasons:
             return self._reasons[key]
@@ -126,8 +129,8 @@ class ReasonHead():
         return self._id.find("fixed_mat") != -1
 
     def get_material(self):
-        if len(self._subreasons) != 1:
-            raise RegressionReasonException("fixed_max proxy reason with not exactly one sub reason, id=%s" % self._id)
+        if len(self._subreasons) > 1:
+            raise RegressionReasonException("fixed_mat proxy reason with not exactly one sub reason, id=%s" % self._id)
         for key in self._subreasons:
             return self._subreasons[key].get_id()
 
@@ -250,7 +253,8 @@ def get_reasons(reason_file):
                     new_reason.add_subreason(new_subreason)
                 new_subreason = None
                 if new_reason is not None:
-                    reasons.add_reason(new_reason)
+                    if new_reason.is_mat_proxy() and not reasons.contains_reason(new_reason.get_key()):
+                        reasons.add_reason(new_reason)
                 new_reason = ReasonHead(to_reason_type(hit.group(1)), hit.group(2))
                 continue
             hit = rgx_subreason.search(line)
@@ -291,7 +295,7 @@ def main():
 
     item = RegressionReasons(args.reference_file)
     print(item)
-
+    
     print("\nreason compare result = %s" % item.get_result())
 
 if __name__ == "__main__":
