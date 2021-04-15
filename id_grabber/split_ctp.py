@@ -76,9 +76,9 @@ def split_ctp(filename, strip_1st=0):
             if rgx_no_dataline.search(line) is not None and prev_line is not None:
                 out.write("%s" % prev_line)
                 prev_line = None
-            out.close()
             if strip_1st:
                 break
+            out.close()
             fn_out = filename + '%03d' % cnt
             out = open(fn_out, 'w', encoding=encoding_id)
             cnt += 1
