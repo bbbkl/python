@@ -142,7 +142,9 @@ class PerformanceTrace:
         listener = (end - mid2).total_seconds()
         return (int(startup), int(mid), int(listener))
 
-    def strip_timestamp(self, line):
+    def strip_to_key(self, line):
+        if line.find('updateProcessStructures') != -1:
+            return 'updateProcessStructures'
         pos = line.find('|')
         if pos != -1:
             return line[pos:]
@@ -153,7 +155,7 @@ class PerformanceTrace:
         key = None
         cluster = []
         for idx, line in enumerate(self._lines):
-            short_line = self.strip_timestamp(line)
+            short_line = self.strip_to_key(line)
             if short_line == key:
                 continue
             if idx - start_idx > 5:
