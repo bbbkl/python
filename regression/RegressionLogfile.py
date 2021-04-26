@@ -63,6 +63,9 @@ class RegressionLogfile:
         if ref_ctp_msecs and res_ctp_msecs:
             pct = round(res_ctp_msecs * 100 / max(ref_ctp_msecs, 1))
             report += "\n\tavg msecs ctp reference=%d result=%d (%d%%)" % (ref_ctp_msecs, res_ctp_msecs, pct)
+        ref_mem = self.get_max_memory_footprint(ref)
+        res_mem = self.get_max_memory_footprint(res)
+        report += "\n\tmemory [gb] reference=%s result=%s" % (ref_mem, res_mem)
         errs_ref, errs_res = self.get_errors(ref), self.get_errors(res)
         if errs_ref:
             report += "\n\terrors in reference:"
@@ -310,7 +313,18 @@ class RegressionLogfile:
         if not filename in self.encoding_cache:
             self.encoding_cache[filename] = RegressionUtil.test_encoding(filename)
         return self.encoding_cache[filename]
-
+    
+    def get_max_memory_footprint(self, logfile):
+        if logfile is None or not os.path.exists(logfile):
+            return -1
+        # thread id prefix before timestamp
+        rgx_memory = re.compile(r'(?:memory used|peak memory)\s+\[gb\]\:\s+(\d+\.\d+)')
+        for line in reversed(list(open(logfile, encoding=self.get_encoding(logfile)))):
+            hit = rgx_memory.search(line)
+            if hit:
+                return hit.group(1)
+        return -1.0
+    
 def parse_arguments():
     """parse commandline arguments"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
