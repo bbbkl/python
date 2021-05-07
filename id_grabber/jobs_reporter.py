@@ -263,6 +263,7 @@ def performance_report(logfile, mode_52):
                        r'ApsSchedulerCPO_emptySchedule',
                        r'elapsed milliseconds since last job start',
                        r'APS Scheduler\s+#proc',
+                       r'retry=',
                        r'invoke restart service'
                        ]
     rgx_mid = re.compile(r"^.*(%s)" % '|'.join(mid_expressions))
