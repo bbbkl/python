@@ -22,6 +22,7 @@
 
 from argparse import ArgumentParser
 from enum import IntEnum
+import filecmp
 import re
 from RegressionResultCodes import Regr
 from RegressionException import RegressionReasonException
@@ -184,6 +185,8 @@ class SubReason():
     def add_timebound(self, timebound, act):
         self._id = "%s/%s" % (timebound, act)
         self._timebound = timebound
+    def add_precedence_acts(self, act1, act2):
+        self._id = "%s;%s" % (act1, act2)
 
     def get_timebound(self):
         return self._timebound
@@ -216,6 +219,8 @@ class RegressionReasons:
     def get_result(self):
         res_file = self.get_result_file()
         if res_file is not None:
+            if filecmp.cmp(self.get_reference_file(), res_file):
+                return Regr.OK
             ref = get_reasons(self.get_reference_file())
             res = get_reasons(res_file)
             return ref.compare(res)
@@ -244,6 +249,7 @@ def get_reasons(reason_file):
         rgx_endtime = re.compile(r'\send_time=(\S+)')
         rgx_subreason = re.compile(r'reason=(\S+).*timeLate=(\S+).*process=([^=]*\S)(?:$|\s+\S+=)')
         rgx_timebound = re.compile(r'act=(?: name=)?([^=]+)\s+\S+=.*timeBound=(\S+)')
+        rgx_precedence = re.compile(r'fromAct=(\S+)\s+toAct=(\S+)')
         new_reason = None
         new_subreason = None
         for line in open(reason_file, encoding=RegressionUtil.test_encoding(reason_file)) :
@@ -276,6 +282,10 @@ def get_reasons(reason_file):
                 hit = rgx_timebound.search(line)
                 if hit:
                     new_subreason.add_timebound(hit.group(1), hit.group(2))
+            if line.find('precedence_delay') != -1:
+                hit = rgx_precedence.search(line)
+                if hit:
+                    new_subreason.add_precedence_acts(hit.group(1), hit.group(2))
 
         return reasons
     except RegressionReasonException as ex:
