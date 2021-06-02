@@ -143,8 +143,13 @@ class PerformanceTrace:
         return (int(startup), int(mid), int(listener))
 
     def strip_to_key(self, line):
-        if line.find('updateProcessStructures') != -1:
-            return 'updateProcessStructures'
+        keys = ['updateProcessStructures',
+                'lUpdateProcessStructures',
+                'calculateMRPBasedTempStructures',
+                'sodac00045']
+        for key in keys:
+            if line.find(key) != -1:
+                return key
         pos = line.find('|')
         if pos != -1:
             return line[pos:]
@@ -220,16 +225,16 @@ def show_short_report(performance_items, stream=sys.stdout):
                                              item.get_proc_act_info()))
         """
 
-def test_encoding(message_file):
+def test_encoding(filename):
     """check for file encoding"""
     encodings = ["UTF-8", "ISO-8859-1", "latin-1"]
 
-    if not os.path.exists(message_file):
-        raise FileNotFoundError(message_file)
+    if not os.path.exists(filename):
+        raise FileNotFoundError(filename)
 
     for item in encodings:
         try:
-            for _ in open(message_file, encoding=item):
+            for _ in open(filename, encoding=item):
                 pass
             return item
         except UnicodeDecodeError:
@@ -420,6 +425,7 @@ def main():
         return 0
 
     if args.concat_run:
+        concatinated_log = ""
         try:
             concatinated_log = concat_logs(filename)
             report_data = performance_report(concatinated_log, args.mode_52)
