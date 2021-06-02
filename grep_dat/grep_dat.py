@@ -61,6 +61,60 @@ class ResReserved(BaseData):
     def cmd(cls):
         return 351  #  DEF_ERPCommandcreate_ResReserved__
 
+class ResourceCst(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+    def proc_id(self):
+        return self._tokens[1]
+    def partproc(self):
+        return self._tokens[2]
+    def act_pos(self):
+        return self._tokens[3]
+    def ident_act(self):
+        return self._tokens[7]
+    def res_kind(self):
+        return self._tokens[5]
+    def res_id(self):
+        return self._tokens[6]
+    def intensity(self):
+        return int(self._tokens[8])
+    def is_altres(self):
+        return self._tokens[9] == '1'
+    def selected_res(self):
+        return self._tokens[11]
+
+    def __str__(self):
+        if self.is_altres():
+            return "ResourceCst %s/%s/%s/%s altRes=%s selected=%s intensity=%d" % (self.proc_id(), self.partproc(), 
+                                                                                   self.act_pos(), self.ident_act(), self.res_id(), self.selected_res(), self.intensity())
+        else:
+            return "ResourceCst %s/%s/%s/%s isAltRes=%s res=%s intensity=%d" % (self.proc_id(), self.partproc(), self.act_pos(), self.ident_act(), 
+                                                                                self.is_altres(), self.res_id(), self.intensity())
+         
+    @classmethod 
+    def cmd(cls):
+        return 350  #  DEF_ERPCommandcreate_Resource_____
+    
+def check_altsres(messagefile):
+    items = parse_messagefile(messagefile, [ResourceCst,])
+    item_altres80 = filter(lambda x: x.is_altres() and x.res_kind() == "7" and x.res_id() == "80", items)
+    cnt_all = cnt_selected = 0
+    for res_cst in item_altres80:
+        cnt_all += 1
+        if res_cst.selected_res() != "":
+            cnt_selected += 1
+            # print(res_cst)
+    print("#altres=%d #selectd=%d" % (cnt_all, cnt_selected))
+    
+    item_res80 = filter(lambda x: not x.is_altres() and x.res_kind() == "7" and x.res_id() == "80", items)
+    cnt_res80 = 0
+    for res_cst in item_res80:
+        print(res_cst)
+        cnt_res80 += 1
+    print("#res80=%d" % cnt_res80)
+    
+    sys.exit(0)
+
 class Activity(BaseData):
     _server_date = None
     
@@ -375,10 +429,12 @@ def main():
     """main function"""
     args = parse_arguments()
  
+ 
+    check_altsres(args.message_file)
+ 
     for item in parse_messagefile(args.message_file, [ResReserved,]):
         print(item)
     return 0
-
 
     items = parse_messagefile(args.message_file, [PartProcess, Activity, Edge, ServerInfo])
     procs = build_procs(items)
