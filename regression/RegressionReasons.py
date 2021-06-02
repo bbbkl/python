@@ -95,6 +95,9 @@ class ReasonSet():
             return self._reasons[key]
         return None
 
+    def __len__(self):
+        return len(self._reasons)
+
     def compare(self, other):
         """compare against another reason set"""
         if len(self._reasons) != len(other._reasons):
@@ -122,7 +125,7 @@ class ReasonHead():
 
     def get_key(self):
         key = "%s id=%s" % (self._type, self._id)
-        if self.is_mat_proxy():
+        if self.is_mat_proxy() and len(self._subreasons) == 1:
             key += " mat=%s" % self.get_material()
         return key
 
@@ -160,6 +163,15 @@ class ReasonHead():
             return 0
         if len(self._subreasons) != len(other._subreasons):
             return 0
+        
+        """ # debug
+        for key, subreason in self._subreasons.items():
+            if not other.get_subreason(key):
+                print("xxx res_key=%s\n%s\n" % (key, subreason))
+        for key, subreason in other._subreasons.items():
+            if not self.get_subreason(key):
+                print("xxx ref_key=%s\n%s\n" % (key, subreason))
+        """
         for key, subreason in self._subreasons.items():
             res_subreason = other.get_subreason(key)
             if res_subreason is None or subreason != res_subreason:
@@ -173,6 +185,7 @@ class SubReason():
         self._time_late = time_late
         self._process = process
         self._timebound = None
+        self._reservation = None
         self._id = None
 
     def get_key(self):
@@ -185,9 +198,13 @@ class SubReason():
     def add_timebound(self, timebound, act):
         self._id = "%s/%s" % (timebound, act)
         self._timebound = timebound
+    def add_reservation(self, reservation):
+        self._reservation = reservation
     def add_precedence_acts(self, act1, act2):
         self._id = "%s;%s" % (act1, act2)
 
+    def get_reservation(self):
+        return self._reservation
     def get_timebound(self):
         return self._timebound
 
@@ -233,7 +250,8 @@ def get_reason_identifier(line):
         r'resource1=(\S+).*ress?ource2=(\S+)', # combi res_res
         r'material=(\S+).*resource=(\S+)', # combi mat_res
         r'resource=([^=]+)\s+\S+=',  # resource=xyz K3 (Machine) timeLate=P0
-         r'material=([^=]+)\s+\S+='] # mat
+        r'material=([^=]+)\s.*reservation=([^=]+)\s+\S+=',  # mat with reservation
+        r'material=([^=]+)\s+\S+='] # mat
 
     for rgx in regex:
         hit = re.search(rgx, line)
@@ -249,6 +267,7 @@ def get_reasons(reason_file):
         rgx_endtime = re.compile(r'\send_time=(\S+)')
         rgx_subreason = re.compile(r'reason=(\S+).*timeLate=(\S+).*process=([^=]*\S)(?:$|\s+\S+=)')
         rgx_timebound = re.compile(r'act=(?: name=)?([^=]+)\s+\S+=.*timeBound=(\S+)')
+        rgx_reservation = re.compile(r'reservation=(\S+)')
         rgx_precedence = re.compile(r'fromAct=(\S+)\s+toAct=(\S+)')
         new_reason = None
         new_subreason = None
@@ -278,6 +297,10 @@ def get_reasons(reason_file):
             hit = rgx_endtime.search(line)
             if hit:
                 new_reason.add_end_timepoint(hit.group(1))
+            if line.find('reservation') != -1:
+                hit = rgx_reservation.search(line)
+                if hit:
+                    new_subreason.add_reservation(hit.group(1))
             if line.find('timeBound') != -1:
                 hit = rgx_timebound.search(line)
                 if hit:
@@ -286,7 +309,14 @@ def get_reasons(reason_file):
                 hit = rgx_precedence.search(line)
                 if hit:
                     new_subreason.add_precedence_acts(hit.group(1), hit.group(2))
-
+                
+        if new_reason:
+            if new_subreason and not new_reason.get_subreason(new_subreason.get_key()):
+                new_reason.add_subreason(new_subreason)
+            
+            if not reasons.contains_reason(new_reason.get_key()):
+                reasons.add_reason(new_reason)
+        
         return reasons
     except RegressionReasonException as ex:
         raise RegressionReasonException("%s, file %s" % (ex, reason_file))
