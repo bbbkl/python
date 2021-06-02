@@ -97,7 +97,7 @@ def parse_arguments():
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
-    parser.add_argument('collector_export', metavar='collector_export', help='input message file')
+    parser.add_argument('collector_export', metavar='collector_export', help='input collector export xml file')
 
     """
     parser.add_argument('-m', '--mat-id', metavar='string', # or stare_false
@@ -120,7 +120,7 @@ def main():
     res_csts = grep_resource_constraints(filename)
     acts = grep_acts(filename)
     
-    show_res_situation(res_csts, acts, 'r20910', '2021-05-11T08:46', '2021-06-02T08:56')
+    show_res_situation(res_csts, acts, 'r90190', '2021-08-02T14:00', '2021-08-02T15:00')
     #show_res_situation(res_csts, acts, 'r20913', '2021-05-11T08:47', '2021-05-11T08:47')
     #show_res_situation(res_csts, acts, 'r20913', '2021-06-02T08:57', '2021-06-02T08:57')
     
