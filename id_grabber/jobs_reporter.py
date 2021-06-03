@@ -386,9 +386,9 @@ def concat_logs(dirname):
     if not re.search(r'_\d+\d+\.log$', logfiles[0]):
         logfiles.append(logfiles.pop(0))
     result = os.path.join(dirname, "summary._tmp_")
-    with open(result, 'w') as outfile:
+    with open(result, 'wb') as outfile:
         for fname in logfiles:
-            with open(fname) as infile:
+            with open(fname, 'rb') as infile:
                 for line in infile:
                     outfile.write(line)
     return result
