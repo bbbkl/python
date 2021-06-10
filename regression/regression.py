@@ -252,6 +252,9 @@ def parse_arguments():
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('config_file', metavar='config_file', help='input regression configuration file')
+    parser.add_argument('-e', '--endless', action="store_true", # or stare_false
+                      dest="endless", default=False, # negative store value
+                      help="endless execution")
     parser.add_argument('-d', '--develop', action="store_true", # or stare_false
                       dest="develop", default=False, # negative store value
                       help="develop modus, no real mail")
@@ -283,7 +286,10 @@ def main():
             regression.create_reference()
             if args.create_reference_only:
                 return
+            
         regression.do_regression()
+        while args.endless:
+            regression.do_regression()
 
         """
         # develop
