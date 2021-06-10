@@ -138,18 +138,26 @@ class PerformanceTrace:
         if mid2 is None:
             mid2 = end
         startup = (mid1 - start).total_seconds()
-        mid = (mid2 - mid1).total_seconds()
-        listener = (end - mid2).total_seconds()
+        try:
+            mid = (mid2 - mid1).total_seconds()
+            listener = (end - mid2).total_seconds()
+        except:
+            mid = 0
+            listener = 0
         return (int(startup), int(mid), int(listener))
 
     def strip_to_key(self, line):
         keys = ['updateProcessStructures',
                 'lUpdateProcessStructures',
                 'calculateMRPBasedTempStructures',
-                'sodac00045']
+                'sonic']
         for key in keys:
             if line.find(key) != -1:
                 return key
+        # check for pa message
+        hit = re.search(r'([a-z][a-z_]{4}0{3}\d{2})', line)
+        if hit:
+            return hit.group(1)
         pos = line.find('|')
         if pos != -1:
             return line[pos:]
@@ -175,6 +183,8 @@ class PerformanceTrace:
     def elapsed_total(self):
         start = get_datetime(self._lines[0])
         end = get_datetime(self._lines[self.get_last_line_idx()])
+        if start is None or end is None:
+            return 0
         diff = end - start
         return diff.total_seconds()
 
@@ -264,12 +274,15 @@ def performance_report(logfile, mode_52):
                        r'Sen[dt].*Solution to ERP',
                        r'DEF_APSCommandSetServerState______',
                        r'end syncronize',
+                       r'[^C]Error',
+                       r'sonic',
                        r'tardinessReasoning',
                        r'ApsSchedulerCPO_emptySchedule',
                        r'elapsed milliseconds since last job start',
                        r'APS Scheduler\s+#proc',
                        r'retry=',
-                       r'invoke restart service'
+                       r'invoke restart service',
+                       r'[a-z][a-z_]{4}0{3}\d{2}' # pa message
                        ]
     rgx_mid = re.compile(r"^.*(%s)" % '|'.join(mid_expressions))
 
