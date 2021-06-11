@@ -209,7 +209,7 @@ class SubReason():
         return self._timebound
 
     def __str__(self):
-        msg = "sub_reason type=%s time_late=%s" % (self._type, self._time_late)
+        msg = "sub_reason type=%s time_late=%s id=%s" % (self._type, self._time_late, str(self._id))
         return msg
 
     def __eq__(self, other):
@@ -247,16 +247,16 @@ class RegressionReasons:
 def get_reason_identifier(line):
     """get reason specific identifier (material, resource, timebound ..."""
     regex = [
-        r'resource1=(\S+).*ress?ource2=(\S+)', # combi res_res
-        r'material=(\S+).*resource=(\S+)', # combi mat_res
-        r'resource=([^=]+)\s+\S+=',  # resource=xyz K3 (Machine) timeLate=P0
-        r'material=([^=]+)\s.*reservation=([^=]+)\s+\S+=',  # mat with reservation
-        r'material=([^=]+)\s+\S+='] # mat
+        r'resource1=([^/]+).*ress?ource2=([^\)]+\))', # combi res_res
+        r'material=(\S+)\s(?:reservation=(\S+))?.*resource=([^\)]+\))', # combi mat_res
+        r'resource=([^\)]+\))',  # resource=xyz K3 (Machine) timeLate=P0
+        r'material=(\S+)\s(?:reservation=(\S+))?']  # mat with optional reservation
 
     for rgx in regex:
         hit = re.search(rgx, line)
         if hit:
-            return '/'.join(hit.groups())
+            groups = filter(lambda x: x is not None, hit.groups())
+            return '/'.join(groups)
     return None
 
 def get_reasons(reason_file):
