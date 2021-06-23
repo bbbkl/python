@@ -103,15 +103,17 @@ def check_altsres(messagefile):
         cnt_all += 1
         if res_cst.selected_res() != "":
             cnt_selected += 1
-            # print(res_cst)
-    print("#altres=%d #selectd=%d" % (cnt_all, cnt_selected))
+            print(res_cst, ' ***')
+        else:
+            print(res_cst)
+    print("#altres=%d #selectd=%d\n" % (cnt_all, cnt_selected))
     
     item_res80 = filter(lambda x: not x.is_altres() and x.res_kind() == "7" and x.res_id() == "80", items)
     cnt_res80 = 0
     for res_cst in item_res80:
         print(res_cst)
         cnt_res80 += 1
-    print("#res80=%d" % cnt_res80)
+    print("explicit resource constraints, no altres, #res80=%d" % cnt_res80)
     
     sys.exit(0)
 
@@ -139,7 +141,7 @@ class Activity(BaseData):
     def is_frozen(self):
         return self._tokens[16] == '1'
     def has_duedate(self):
-        return len(self._tokens) >= 43 and self._tokens[43] != '?'
+        return len(self._tokens) > 43 and self._tokens[43] != '?'
     def duedate(self):
         return self._tokens[43]
     def __str__(self):
@@ -259,6 +261,32 @@ class Process:
     def set_server_date(cls, value):
         Process.server_start = value
 
+class SchedulingTrigger:
+    def __init__(self, line):
+        self._tokens = line.split('\t')
+    def __str__(self):
+        return "SchedulingTrigger %s -> %s" % (self.cover_id(), self.demand_id())
+    
+    def pprint(self, act_lookup):
+        src = self.demand_id()
+        dst = self.cover_id()
+        if src in act_lookup:
+            src = str(act_lookup[src])
+        if dst in act_lookup:
+            dst = str(act_lookup[dst])
+        print("SchedulingTrigger %s -> %s" % (dst, src))
+        
+    def demand_obj_type(self):
+        return int(self._tokens[0])
+    def demand_id(self):
+        return self._tokens[1]
+    def demand_date(self):
+        return self._tokens[2]
+    def cover_obj_type(self):
+        return int(self._tokens[3])
+    def cover_id(self):
+        return self._tokens[4]
+
 def build_procs(items):
     procs = {}
     partprocs = filter(lambda x: isinstance(x, PartProcess), items)
@@ -284,6 +312,23 @@ def build_procs(items):
 def get_key_regex(classes):
     keys = map(lambda x: str(x.cmd()), classes)
     return re.compile(r"^2\t(%s)" % "|".join(keys))
+
+def parse_sched_trigger(to_sonic_file):
+    items = []
+    # 2    825    DEF_APSCommandcreate_SchedTrigger_
+    rgx_sched_trigger = re.compile(r"^2\t825$")
+    rgx_dataline = re.compile(r"^3\s+(.*)\n?")
+    data_line = NONE
+    for line in open(to_sonic_file):
+        hit = rgx_dataline.search(line)
+        if hit:
+            data_line = hit.group(1)
+            continue
+        
+        if rgx_sched_trigger.search(line) and data_line is not None:
+            items.append(SchedulingTrigger(data_line))
+            data_line = None
+    return items
 
 def parse_messagefile(messagefile, classes):
     items = []
@@ -403,6 +448,31 @@ def date_less_eq(date1, date2):
     if date1[0:1] < date2[0:1]: return True
     if date1[0:1] > date2[0:1]: return False
     return True   
+       
+def get_cluster(sched_trigger, start_id):
+    ids = set()
+    ids.add(start_id)
+    while True:
+        len_start = len(ids)
+        for item in sched_trigger:
+            if item.demand_id() in ids:
+                ids.add(item.cover_id())
+            if item.cover_id() in ids:
+                ids.add(item.demand_id())
+        if len(ids) == len_start:
+            break
+    cluster = []
+    for item in sched_trigger:
+        if item.demand_id() in ids or item.cover_id() in ids:
+            cluster.append(item)
+    return cluster
+       
+def show_sched_trigger(sched_trigger, activites):
+    id_to_act = {}
+    for act in activites:
+        id_to_act[act.ident_act()] = act
+    for item in sched_trigger:
+        item.pprint(id_to_act)
                      
 def parse_arguments():
     """parse arguments from command line"""
@@ -410,7 +480,9 @@ def parse_arguments():
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('message_file', metavar='message_file', help='input message file')
-
+    parser.add_argument('-ts', '--to_sonic', metavar='string', # or stare_false
+                      dest="to_sonic", default='', # negative store value
+                      help="to_sonic file")
     """
     parser.add_argument('-m', '--mat-id', metavar='string', # or stare_false
                       dest="id_mat", default='', # negative store value
@@ -421,6 +493,7 @@ def parse_arguments():
     parser.add_argument('-p', '--pattern', metavar='string', # or stare_false
                       dest="pattern", default='xxx', # negative store value
                       help="search pattern within logfile")
+    
     """
     return parser.parse_args()
     
@@ -430,15 +503,24 @@ def main():
     args = parse_arguments()
  
  
-    check_altsres(args.message_file)
+    # check_altsres(args.message_file)
  
-    for item in parse_messagefile(args.message_file, [ResReserved,]):
-        print(item)
-    return 0
+    if 0:
+        for item in parse_messagefile(args.message_file, [ResReserved,]):
+            print(item)
+        return 0
 
     items = parse_messagefile(args.message_file, [PartProcess, Activity, Edge, ServerInfo])
     procs = build_procs(items)
 
+    if args.to_sonic:
+        sched_trigger = parse_sched_trigger(args.to_sonic)
+        cluster = get_cluster(sched_trigger, '4882997')
+        activities =  filter(lambda x: isinstance(x, Activity), items)
+        show_sched_trigger(cluster, activities)
+        return 0
+
+    
     if 0:
         show_forein_acts(items)
         sys.exit(0)
