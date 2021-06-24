@@ -301,10 +301,12 @@ class ToString(object):
         ETBOProcess:          return 3;
         """
         val = to_int(val)
-        if val == 0: return 'standard'
-        if val == 1: return 'reservation'
-        if val == 2: return 'fixed_predecessor'
-        if val == 3: return 'process'
+        if val == 0 or val == 301: return 'standard'
+        if val == 1 or val == 302: return 'reservation'
+        if val == 2 or val == 303: return 'fixed_predecessor'
+        if val == 3 or val == 304: return 'process'
+        if val == 305: return 'stable_scope'
+        if val == 306: return 'external_service'
         return 'undefined'
     
     @classmethod
