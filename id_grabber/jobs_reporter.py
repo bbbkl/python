@@ -147,6 +147,13 @@ class PerformanceTrace:
         return (int(startup), int(mid), int(listener))
 
     def strip_to_key(self, line):
+        # check for pa message
+        hit = re.search(r'([a-z][a-z_]{4}0{2}\d{3})', line)
+        if hit:
+            val = hit.group(1)
+            if val == "ppopt00011": # temp started - temp ended
+                val = "ppopt00010"
+            return val
         keys = ['updateProcessStructures',
                 'lUpdateProcessStructures',
                 'calculateMRPBasedTempStructures',
@@ -154,16 +161,13 @@ class PerformanceTrace:
         for key in keys:
             if line.find(key) != -1:
                 return key
-        # check for pa message
-        hit = re.search(r'([a-z][a-z_]{4}0{3}\d{2})', line)
-        if hit:
-            return hit.group(1)
         pos = line.find('|')
         if pos != -1:
             return line[pos:]
         return line
 
     def compress(self):
+        self._lines.append('')
         start_idx = 0
         key = None
         cluster = []
@@ -263,7 +267,8 @@ def performance_report(logfile, mode_52):
     if mode_52:
         rgx_start = re.compile(r"receive Order!")
 
-    mid_expressions = [r"SERVER_STATE",
+    mid_expressions = [r'[a-z][a-z_]{4}0{2}\d{3}', # pa message
+                       r"SERVER_STATE",
                        r'buildObjectModel Modelltyp',
                        r'-- calcAll --',
                        r'begin calcCtp',
@@ -282,7 +287,6 @@ def performance_report(logfile, mode_52):
                        r'APS Scheduler\s+#proc',
                        r'retry=',
                        r'invoke restart service',
-                       r'[a-z][a-z_]{4}0{3}\d{2}' # pa message
                        ]
     rgx_mid = re.compile(r"^.*(%s)" % '|'.join(mid_expressions))
 
@@ -296,10 +300,22 @@ def performance_report(logfile, mode_52):
     last_job_no = None
 
     perf_item = None
+    prev_line = None
     for line in open(logfile, encoding=code):
         # skip nul nul nul lines
-        if len(line) > 0 and line[0] == '\0':
+        if re.match(r'^\s*$', line):
             continue
+        
+        if line.find('d_-app-00001') != -1:
+            continue
+
+        if line.find('DEF_APSCommandSetServerState______ stacktrace') != -1:
+            prev_line = line
+            continue
+        if prev_line is not None:
+            new_line = prev_line[:-1] + ' ' + line
+            line = new_line
+            prev_line = None
 
         for rgx in rgx_all:
             hit = rgx.search(line)
