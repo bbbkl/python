@@ -2,6 +2,7 @@
 # file: check_assignment.py
 #
 # description
+from pickle import NONE
 
 """\n\n
     script to check assigment quality
@@ -47,6 +48,7 @@ class Proc:
         self._dict = {}
         self._pos = -1
         self._is_past = False
+        self._clusterhead = None
         self.parse(line)
         
         
@@ -62,9 +64,14 @@ class Proc:
         self._is_past = line[-2] == 'P'
         
     def __str__(self):
-        return "%s duedate=%s pos=%d dpl=%s prio=%s planned=%s pos1=%d pos2=%d %s" % \
-            (self.process(), self.duedate(), self.pos(), self.dpl(), self.prio(), self.tp_end(), self.pos1(), self.pos2(), "P" if self._is_past else " ")
+        msg = "%s duedate=%s pos=%d dpl=%s prio=%s age=%s planned=%s pos1=%d pos2=%d q=%d %s" % \
+            (self.process(), self.duedate(), self.pos(), self.dpl(), self.prio(), self.age(), self.tp_end(), 
+             self.pos1(), self.pos2(), self.quantity(), "P" if self._is_past else " ")
+        if self.cluster() != "" and self.cluster() != self.process()[4:]:
+            msg += " cluster=%s" % self.cluster()
+        return msg
         
+    def cluster(self): return self._clusterhead if self._clusterhead is not NONE else ""
     def process(self): return self._dict['process']
     def duedate(self): return self._dict['duedate']
     def duedate_sort(self):
@@ -75,8 +82,17 @@ class Proc:
         day = dd[:2]
         return year + month + day
     def dpl(self): return self._dict['dpl']
-    def part(self): return self._dict['part']
+    def part_raw(self): return self._dict['part']
+    def part(self):
+        #return self.part_raw() # part contains quantity -> different quantiy -> different part
+        val = self.part_raw()
+        return val[:val.rfind('|')]
+    def quantity(self):
+        val = self.part_raw()
+        pos = val.rfind('|')
+        return int(float(val[pos+1:]))
     def prio(self): return self._dict['prio'][:4]
+    def age(self): return self._dict['age']
     def pos(self): return self._pos
     def tp_end(self): return self._tp_end 
     def pos1(self): return self._pos1 # duedate
@@ -86,6 +102,7 @@ class Proc:
     def set_pos1(self, val): self._pos1 = val
     def set_pos2(self, val): self._pos2 = val
     def set_pos3(self, val): self._pos3 = val
+    def set_clusterhead(self, val): self._clusterhead = val
     
     def add_end(self, end):
         self._tp_end = end
@@ -101,9 +118,41 @@ def grep_processes(filename):
         if action and re.search(r'^\s*$', line):
             break
     return result
+
+def grep_assignment_cluster(filename):
+    result = {}
+    return result
+    rgx_start = re.compile(r'Scheduled block with \d+ processes')
+    rgx_proc = re.compile(r'^\s{20}\s+(\S.*\S+)$')
+    current_cluster_head = NONE
+    in_action = False
+    for line in open(filename):
+        if rgx_start.search(line):
+            in_action = True
+            continue
+        if in_action:
+            hit = rgx_proc.search(line)
+            in_action = hit is not NONE
+            if hit:
+                info = hit.group(1)
+                if info[0] == '*':
+                    current_cluster_head = info[1:]
+                    result[current_cluster_head] = current_cluster_head
+                else:
+                    if current_cluster_head is None:
+                        raise "no cluster head with line=%s" % line
+                    result[info] = current_cluster_head
+    return result
+    
         
 def grep_cluster(filename):
     procs = grep_processes(filename)
+    proc2Clusterhead = grep_assignment_cluster(filename)
+    for proc in procs:
+        proc_id = proc.process()[4:]
+        if proc_id  in proc2Clusterhead:
+            proc.set_clusterhead(proc2Clusterhead[proc_id ])
+    
     cluster = {}
     for proc in procs:
         cluster.setdefault(proc.part(), [])
@@ -158,7 +207,8 @@ def get_suffix(proc, prev_proc):
             return "---" # same due dates, probably non relevant shift
         if proc.pos1() == proc.pos3():
             return "***" # sorted pos by due date is equal to sorted pos by LogShowSortingOrder
-        return "xxx" # unexpected diff - why?
+        if prev_proc is not None and (prev_proc.pos1()+1) != proc.pos1():
+            return "xxx" # unexpected diff - why?
     return "" # everything is fine
     
 def add_planning_results(cluster, headproc_file):
