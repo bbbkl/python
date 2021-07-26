@@ -21,6 +21,7 @@ def nexus_upload(src, version_id, nexus_artifact='vc_redist.x64', nexus_group='c
     
     try:
         subprocess.call(cmd, shell=False)
+        print("upload ok")
     except:
         print("failed nexus upload %s / %s" % (os.path.basename(src), version_id))
     
