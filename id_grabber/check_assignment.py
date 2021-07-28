@@ -64,7 +64,7 @@ class Proc:
         self._is_past = line[-2] == 'P'
         
     def __str__(self):
-        msg = "%s duedate=%s pos=%d dpl=%s prio=%s age=%s planned=%s pos1=%d pos2=%d q=%d %s" % \
+        msg = "%s duedate=%s pos=%04d dpl=%s prio=%s age=%03d planned=%s pos1=%02d pos2=%02d q=%d %s" % \
             (self.process(), self.duedate(), self.pos(), self.dpl(), self.prio(), self.age(), self.tp_end(), 
              self.pos1(), self.pos2(), self.quantity(), "P" if self._is_past else " ")
         if self.cluster() != "" and self.cluster() != self.process()[4:]:
@@ -92,7 +92,7 @@ class Proc:
         pos = val.rfind('|')
         return int(float(val[pos+1:]))
     def prio(self): return self._dict['prio'][:4]
-    def age(self): return self._dict['age']
+    def age(self): return int(self._dict['age'])
     def pos(self): return self._pos
     def tp_end(self): return self._tp_end 
     def pos1(self): return self._pos1 # duedate

@@ -10,60 +10,30 @@ import re
 from argparse import ArgumentParser
 import os.path
 import shutil
+from subprocess import run, PIPE
+from glob import glob
 
 VERSION = '0.1'
 
-def grep_keys(filename):
-    cal_items = []
-    res_items = []
-    prev_idx = None
-    rgx = re.compile("^xxx(1|2).*'([^']*)'.*key='([^']*)'")
-    for line in open(filename):
-        hit = rgx.search(line)
-        if hit:
-            idx, val, key = hit.groups()
-            if idx == "1":
-                if prev_idx is None:
-                    cal_items.append({})
-                cal_items[-1][key] = val
-            if idx == "2":
-                if prev_idx is None:
-                    res_items.append({})
-                res_items[-1][key] = val                     
-            prev_idx = idx
-        else:
-            prev_idx = None
+def convert_dotfiles(dotfile_dir):
+    dotfiles = []
+    for fn in glob(dotfile_dir + "/*.dot"):
+        if fn[-4:] != ".dot":
+            continue
+        if os.path.exists(fn + ".svg"):
+            continue
+        dotfiles.append(fn)
+    
+    for dot_file in dotfiles:
+        call_graphviz(dot_file)
+        print("handled %s" % dot_file)
 
-    # compuare res
-    for item in cal_items:
-        print("#cal=%d" % len(item))
-    for item in res_items:
-        print("#res=%d" % len(item))
-    
-    cal1 = cal_items[0]
-    cal2 = cal_items[1]
-    for key in cal2:
-        if not key in cal1:
-            print("new cal2 key=%s val=%s" % (key, cal2[key])) 
-    
-    res1 = res_items[0]
-    res2 = res_items[1]      
-    for key in res2:
-        if not key in res1:
-            print("new res2 key=%s val=%s" % (key, res2[key])) 
-        
-        
-def create_sample():
-    base = r"D:\work\parallel_reasons\simple_tardy20\sync.single_tardy20.dat000"
-    ctp = r"D:\work\parallel_reasons\simple_tardy20\sync.single_tardy20.dat001"
-    
-    dst = r"D:\work\parallel_reasons\simple_tardy20\simple_tardy20.dat"
-    shutil.copyfile(base, dst)
-    out = open(dst, "a")
-    for i in range(0, 10000):
-        instream = open(ctp, "r")
-        out.write(instream.read()) 
-    out.close()
+def call_graphviz(dot_file):
+    """call graphviz for given dotfile"""
+    exe = r"C:\Program Files (x86)\Graphviz2.38\bin\dot.exe"
+    params = "-Gcharset=latin1 -Tsvg -o%s.svg %s" % (dot_file, dot_file)        
+    cmd = '%s %s' % (exe, params)
+    run(cmd) #, stdout=outstream, stderr=outstream)
     
 def parse_arguments():
     """parse arguments from command line"""
@@ -89,14 +59,8 @@ def main():
     """main function"""
     args = parse_arguments()
 
-    #grep_keys(args.message_file)
-    create_sample()
+    convert_dotfiles(args.message_file)
     
-    """
-    diff_dict = grep_longfiles(args.message_file)
-    print("\n")
-    pretty_print(diff_dict)
-    """
     
 if __name__ == "__main__":
     try:

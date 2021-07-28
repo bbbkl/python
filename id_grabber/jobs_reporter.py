@@ -219,11 +219,19 @@ def show_report(performance_items, stream=sys.stdout):
         stream.write("\t%4d: %4d\n" % (secs, len(time2item[secs])))
     print()
 
+    prev_job = -1
     for idx, item in enumerate(performance_items):
+        if prev_job != -1 and item.job() != prev_job + 1:
+            if item.job() - prev_job == 2:
+                stream.write("missing job id=%d\n\n" % (prev_job + 1))
+            else:
+                stream.write("missing job ids=%d - %d\n\n" % (prev_job + 1, item.job() -1))
+        prev_job = item.job() if item.job() is not None else -1
+        
         line = re.sub(r'[^\x00-\x7F]', '', str(item)) # strip non ascii characters
         stream.write("%02d %s: %s %s %s\n%s\n" % (idx, item.get_type(), item.elapsed_total(),
                                                   item.start_to_end(), item.get_start_timepoint(), line))
-
+        
 def show_short_report(performance_items, stream=sys.stdout):
     stream.write("Index;Startzeit;Dauer;Was;#proc #acts;Speicher_min;Speicher_max\n")
     for idx, item in enumerate(performance_items):

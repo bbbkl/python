@@ -13,6 +13,7 @@ VERSION = '0.1'
 import re
 import sys
 import operator
+import os.path
 from argparse import ArgumentParser
 
 class BaseData(object):
@@ -140,15 +141,17 @@ class Activity(BaseData):
         return self._tokens[29] == '1'
     def is_frozen(self):
         return self._tokens[16] == '1'
+    def has_reservation(self):
+        return self.server_date() != self.mat_reservation_date()
     def has_duedate(self):
         return len(self._tokens) > 43 and self._tokens[43] != '?'
     def duedate(self):
         return self._tokens[43]
     def __str__(self):
         #return "\t".join(self._tokens)
-        reservation = " reservation=" + self.mat_reservation_date() if self.server_date() != self.mat_reservation_date() else ""
+        reservation = " reservation=" + self.mat_reservation_date() if self.has_reservation() else ""
         duedate = " duedate=" + self.duedate() if self.has_duedate() else ""
-        return "Activitiy %s/%s/%s %s%s%s" % (self.proc_id(), self.partproc(), 
+        return "Activity %s/%s/%s %s%s%s" % (self.proc_id(), self.partproc(), 
           self.act_pos(), self.ident_act(), reservation, duedate)
          
     @classmethod
@@ -422,15 +425,6 @@ def show_paths(procs):
             pps = ','.join(proc.partprocs().keys())
             print("Isolated proc=%s partprocs=%s" % (proc.proc_id(), pps))
         
-def show_timebounds(items):
-    server_info =  next(x for x in items if isinstance(x, ServerInfo))
-    server_date = server_info.sever_date()
-    activities = filter(lambda x: isinstance(x, Activity), items)
-    special_acts = filter(lambda x: x.mat_reservation_date() != server_date, activities)
-    print("server date=%s" % server_date)
-    for act in special_acts:
-        print(act)
-        
 def show_forein_acts(items):
     server_info =  next(x for x in items if isinstance(x, ServerInfo))
     Activity.set_server_date(server_info.sever_date())
@@ -473,6 +467,32 @@ def show_sched_trigger(sched_trigger, activites):
         id_to_act[act.ident_act()] = act
     for item in sched_trigger:
         item.pprint(id_to_act)
+   
+def report_timebounds(message_file):
+    """write activity info files"""
+    items = parse_messagefile(message_file, [Activity, ServerInfo])
+    server_info =  next(x for x in items if isinstance(x, ServerInfo))
+    Activity.set_server_date(server_info.sever_date())
+    name = os.path.basename(message_file)
+    path_all = os.path.join(os.path.dirname(message_file), "all." + name[:-3] + "txt")
+    path_tbd = os.path.join(os.path.dirname(message_file), "timebounds." + name[:-3] + "txt")
+    
+    acts = []
+    activities =  filter(lambda x: isinstance(x, Activity), items) 
+    for act in activities:
+        acts.append(str(act))
+    with open(path_all, "w") as out:
+        for item in sorted(acts):
+            out.write(item + '\n')
+    
+    acts = []
+    activities =  filter(lambda x: isinstance(x, Activity) and x.has_reservation(), items)
+    for act in activities:
+        acts.append(str(act))
+    with open(path_tbd, "w") as out:
+        for item in sorted(acts):
+            out.write(item + '\n')
+    
                      
 def parse_arguments():
     """parse arguments from command line"""
@@ -504,6 +524,18 @@ def main():
  
  
     # check_altsres(args.message_file)
+    
+    if 1:
+        report_timebounds(args.message_file)
+        return 0
+        # show material reservations
+        items = parse_messagefile(args.message_file, [Activity, ServerInfo])
+        server_info =  next(x for x in items if isinstance(x, ServerInfo))
+        Activity.set_server_date(server_info.sever_date())
+        activities =  filter(lambda x: isinstance(x, Activity) and x.has_reservation(), items) # and x.has_reservation()
+        for act in activities:
+            print(act)
+        return 0
  
     if 0:
         for item in parse_messagefile(args.message_file, [ResReserved,]):
