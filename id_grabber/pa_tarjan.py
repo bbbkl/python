@@ -3,6 +3,7 @@
 #
 # description
 # for given TT_M_DispoOrderSuccessor.json calculate cycles with tarjan algo
+# abl: temp-table tt_M_DispoOrderSuccessor:write-json('file':U, 'D:\tmp\TT_M_DispoOrderSuccessor.json', yes).
 from pickle import NONE
 from tarjan import tarjan, strip_result
 
