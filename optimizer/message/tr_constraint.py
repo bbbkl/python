@@ -106,9 +106,9 @@ class TrConstraint(BaseItem):
             return ['process_area_from', 'process', 'part_process_from', 'ident_act_from', 
                 'part_process_to', 'ident_act_to', 'transport_time',
                 'transport_time_unit', 'AOB', 'Teillos', 'Zeitwahl',
-                'Menge_Teillos', 'Je_Menge_Teillos', 'process_are_to']
+                'Menge_Teillos', 'Je_Menge_Teillos', 'process_area_to']
         return ['process_area_from', 'process', 'part_process_from', 'ident_act_from', 
                 'part_process_to', 'ident_act_to', 'transport_time',
                 'transport_time_unit', 'AOB', 'Teillos', 'Zeitwahl',
-                'Menge_Teillos', 'Je_Menge_Teillos', 'process_are_to',
+                'Menge_Teillos', 'Je_Menge_Teillos', 'process_area_to',
                 'buffer_time', 'buffer_time_unit', 'buffer_bound'] # not in 5.1
