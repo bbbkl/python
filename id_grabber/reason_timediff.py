@@ -39,14 +39,12 @@ class ReasonItem:
         return len(self.time_late) == 0
 
     def get_diff(self):
-        baseline_items = [x for x in self.time_late if x[-3:] == 'stc']
-        other_items = [x for x in self.time_late if x[-3:] != 'stc']
-        # if we have no structure reason, take timebound as baseline
-        timebound_ids = ['tbd', 'pre']
-        if len(baseline_items) == 0:
-            baseline_items = [x for x in self.time_late if x[-3:] in timebound_ids]
-            other_items = [x for x in self.time_late if x[-3:] not in timebound_ids]
-        baseline_delay = max(timestr_2_minutes(x) for x in baseline_items) if baseline_items else 0
+        stc_items = [x for x in self.time_late if x[-3:] == 'stc']
+        tbd_items = [x for x in self.time_late if x[-3:] in ('tbd', 'pre')]
+        other_items = [x for x in self.time_late if x[-3:] not in ('stc', 'tbd', 'pre')]
+        stc_delay = max(timestr_2_minutes(x) for x in stc_items) if stc_items else 0
+        tbd_delay = max(timestr_2_minutes(x) for x in tbd_items) if tbd_items else 0
+        baseline_delay = stc_delay + tbd_delay
         other_delay = max(timestr_2_minutes(x) for x in other_items) if other_items else 0
         return timestr_2_minutes(self.delay) - baseline_delay - other_delay
 
@@ -100,6 +98,8 @@ def get_reasons(reason_file):
         hit = rgx_timelate.search(line)
         if hit:
             new_reason.add_timelate(hit.group(1) + get_reason_type(line))
+    if new_reason is not None:
+        reasons.append(new_reason)
     return reasons
 
 
