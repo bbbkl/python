@@ -1,5 +1,6 @@
 import sys
 import os.path
+import re
 
 from collections import namedtuple
 
@@ -155,6 +156,63 @@ def strip_result(raw_data):
         if len(raw_data[i-1]) < 2:
             del raw_data[i-1]
     return raw_data
+
+
+def parse_successor_infos(input_file):
+    """
+    input is a json file TT_M_DispoOrderSuccessor.json created at end of syncJointProducts in mavmrp00.p 
+    temp-table bTT_M_DispoOrderSuccessor:write-json('file':U, 'D:/tmp/TT_M_DispoOrderSuccessor.json', yes).
+    """
+    rgx_part = re.compile(r'Artikel".*"([^"]*)"')
+    rgx_var = re.compile(r'ArtVar".*"([^"]*)"')
+    rgx_mrparea = re.compile(r'MRPArea"[^0-9]+(\d+)')
+    rgx_part_s = re.compile(r'ArtikelSuccessor".*"([^"]*)"')
+    rgx_var_s = re.compile(r'ArtikelVarSuccessor.*"([^"]*)"')
+    rgx_mrparea_s = re.compile(r'MRPAreaSuccessor[^0-9]+(\d+)')
+    
+    successors = {}
+    
+    part = var = mrp = part_s = var_s = mrp_s = None
+    for line in open(input_file):
+        hit = rgx_part.search(line)
+        if hit:
+            part = hit.group(1)
+            continue
+        hit = rgx_var.search(line)
+        if hit:
+            var = hit.group(1)
+            continue
+        hit = rgx_mrparea.search(line)
+        if hit:
+            mrp = hit.group(1)
+            continue
+        hit = rgx_part_s.search(line)
+        if hit:
+            part_s = hit.group(1)
+            continue
+        hit = rgx_var_s.search(line)
+        if hit:
+            var_s = hit.group(1)
+            continue
+        hit = rgx_mrparea_s.search(line)
+        if hit:
+            mrp_s = hit.group(1)
+            v = "/" + var if var else ""
+            vs = "/" + var_s if var_s else ""
+            
+            a = "%s%s/%s" % (part,v,mrp)
+            b = "%s%s/%s" % (part_s,vs,mrp_s)
+            successors.setdefault(a, [])
+            successors[a].append(b)
+    
+    for key in successors:
+        print("%s -> %s" % (key, successors[key]))
+    print()
+    for key in successors:
+        if key in successors[key]:
+            print("direct circle %s <-> %s" % (key, key))
+    print(strip_result(tarjan(successors)))
+
 
 def main():
 
