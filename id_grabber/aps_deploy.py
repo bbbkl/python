@@ -6,12 +6,12 @@
     script creates zip archvie <destination> with all *.exe/*.dll files contained in given dir
 """
 
-import os.path
 import re
+import sys
+import os.path
 from argparse import ArgumentParser
 from glob import glob
 import zipfile
-import sys
 import shutil
 import subprocess
 
@@ -40,7 +40,7 @@ def nexus_upload(src, version_id):
     
     os.remove(file_to_upload)
 
-def zip_files(dir_to_zip, dst):
+def zip_files(dir_to_zip, dst, version_file=''):
     try:
         compression = zipfile.ZIP_DEFLATED
     except:
@@ -53,6 +53,9 @@ def zip_files(dir_to_zip, dst):
             for fn in files:
                 if fn.find('testrunner.exe') != -1: continue
                 zf.write(fn, os.path.basename(fn), compress_type=compression)
+                
+        if version_file:
+            zf.write(version_file, os.path.basename(version_file), compress_type=compression)
     finally:
         zf.close()
 
@@ -80,6 +83,8 @@ def parse_arguments():
                       dest="pa_version", required=True, help="pa version e.g. 7.1")
     parser.add_argument('-zo', '--zipp_only', action='store_true',
                       dest="zip_only", help="create zip archive only")
+    parser.add_argument('-av', '--add_versionfile', metavar='string', # or stare_false
+                      dest="version_file", default='', help="version file")
     
     return parser.parse_args()        
         
@@ -89,12 +94,12 @@ def main():
     src_dir = args.src_dir
     dst_dir = args.dst_dir
 
-    zipfile = getname_zipfile(dst_dir, args.pa_version, args.opt_number)
-    print("creating archive %s" % zipfile)
-    zip_files(src_dir, zipfile)
+    archive = getname_zipfile(dst_dir, args.pa_version, args.opt_number)
+    print("creating archive %s" % archive)
+    zip_files(src_dir, archive, args.version_file)
     if not args.zip_only:
         version_info = get_stateinfo_version(args.pa_version, args.opt_number, args.minor_number)
-        nexus_upload(zipfile, version_info)
+        nexus_upload(archive, version_info)
     return 0
 
 
