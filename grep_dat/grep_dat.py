@@ -96,6 +96,42 @@ class ResourceCst(BaseData):
     def cmd(cls):
         return 350  #  DEF_ERPCommandcreate_Resource_____
     
+    
+class MaterialCst(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+    def proc_id(self):
+        return self._tokens[1]
+    def partproc(self):
+        return self._tokens[2]
+    def act_pos(self):
+        return self._tokens[3]
+    def ident_act(self):
+        return self._tokens[7]
+    def part(self):
+        return self._tokens[5]
+    def part_var(self):
+        return self._tokens[6]
+    def mrp_area(self):
+        return self._tokens[9]
+    def lot(self):
+        return self._tokens[13]
+    def cro(self):
+        if len(self._tokens) < 17 or self._tokens[16] == '0':
+            return ''
+        return self._tokens[16]
+    def quantity(self):
+        return float(self._tokens[7].replace(',', '.'))
+    def material_key(self):
+        return "%s|%s|%s|%s|%s" % (self.mrp_area(), self.part(), self.part_var(), self.lot(), self.cro())
+
+    def __str__(self):
+        return "MaterialCst %s/%s/%s %s quantity=%f" % (self.proc_id(), self.partproc(), self.act_pos(), self.material_key(), self.quantity())
+         
+    @classmethod 
+    def cmd(cls):
+        return 355  #  DEF_ERPCommandcreate_Material_____    
+    
 def check_altsres(messagefile):
     items = parse_messagefile(messagefile, [ResourceCst,])
     item_altres80 = filter(lambda x: x.is_altres() and x.res_kind() == "7" and x.res_id() == "80", items)
@@ -117,6 +153,51 @@ def check_altsres(messagefile):
     print("explicit resource constraints, no altres, #res80=%d" % cnt_res80)
     
     sys.exit(0)
+
+class Uebort(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+        
+    def buf_time(self):
+        if(len(self._tokens) > 5):
+            return self._tokens[5]
+        return "0";
+        
+    def bound_time(self):
+        if(len(self._tokens) > 7):
+            return self._tokens[7]
+        return "0";
+        
+    def __str__(self):
+        return "transition_place addr=%s from=%s to=%s trans=%s tu=%s buf=%s bound=%s" % (\
+            self._tokens[0], self._tokens[1], self._tokens[2], self._tokens[3], self._tokens[4], self.buf_time(), self.bound_time())    
+    
+    @classmethod 
+    def cmd(cls):
+        return 316  #  DEF_ERPCommandcreate_M_UebOrt_____
+    
+
+class Uebaddr(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+        
+    def buf_time(self):
+        if(len(self._tokens) > 4):
+            return self._tokens[4]
+        return "0";
+        
+    def bound_time(self):
+        if(len(self._tokens) > 6):
+            return self._tokens[6]
+        return "0";
+        
+    def __str__(self):
+        return "transition_addr from=%s to=%s trans=%s tu=%s buf=%s bound=%s" % (\
+            self._tokens[0], self._tokens[1], self._tokens[2], self._tokens[3], self.buf_time(), self.bound_time()) 
+        
+    @classmethod 
+    def cmd(cls):
+        return 315  #  DEF_ERPCommandcreate_M_UebAdresse_
 
 class Activity(BaseData):
     _server_date = None
@@ -187,8 +268,8 @@ class PartProcess(BaseData):
     
     def __str__(self):
         #return "\t".join(self._tokens)
-        return "%s %s %s %s is_head=%s is_temp=%s" % (self._tokens[0], self._tokens[1], self._tokens[2], self._tokens[3], 
-                                                      self.is_head(), self.is_temp())
+        return "%s %s %s %s is_head=%s is_temp=%s" % (self._tokens[0], self._tokens[1], self._tokens[2], 
+                                                      self._tokens[3], self.is_head(), self.is_temp())
     def proc_area(self):
         return self._tokens[0]
     def proc_id(self):
@@ -199,6 +280,20 @@ class PartProcess(BaseData):
         return self._tokens[16] == "1"
     def is_temp(self):
         return self._tokens[0][0] == "C"
+    def mrp_area(self):
+        return self._tokens[15]
+    def part(self):
+        return self._tokens[3]
+    def part_var(self):
+        return self._tokens[4]
+    def lot(self):
+        return self._tokens[21]
+    def cro(self):
+        if self._tokens[5] == '0':
+            return '' 
+        return self._tokens[5]
+    def free_quantity(self):
+        return float(self._tokens[17].replace(',', '.'))
     def use_duedate(self):
         return self._tokens[22] == "1"
     def material(self):
@@ -210,6 +305,8 @@ class PartProcess(BaseData):
         return mat
     def duedate(self):
         return self._tokens[8]
+    def material_key(self):
+        return "%s|%s|%s|%s|%s" % (self.mrp_area(), self.part(), self.part_var(), self.lot(), self.cro())
     
     @classmethod 
     def cmd(cls):
@@ -492,7 +589,30 @@ def report_timebounds(message_file):
     with open(path_tbd, "w") as out:
         for item in sorted(acts):
             out.write(item + '\n')
+            
+def report_transition_matrix(message_file):
+    items = parse_messagefile(message_file, [Uebort, Uebaddr])
+    for item in items:
+        print(item)
     
+def show_sub_producers(message_file):
+    """a relevant sub producer produces a material which exists as a demand
+       the producing part process is not the head part process
+    """
+    items = parse_messagefile(message_file, [PartProcess, MaterialCst, ])
+    materials = filter(lambda x: isinstance(x, MaterialCst), items)
+    partprocs = filter(lambda x: isinstance(x, PartProcess), items)
+    demands = set()
+    for mat in materials:
+        #print(mat)
+        if mat.quantity() > 0:
+            demands.add(mat.material_key())
+    
+    for pp in partprocs:
+        if not pp.is_head() and pp.free_quantity() > 0 and pp.material_key() in demands:
+            qty = ('%f' % pp.free_quantity()).rstrip('0').rstrip('.')
+            print("%s material=%s free_quantity=%s" % (pp, pp.material_key(), qty))
+    return 0
                      
 def parse_arguments():
     """parse arguments from command line"""
@@ -526,6 +646,14 @@ def main():
     # check_altsres(args.message_file)
     
     if 1:
+        show_sub_producers(args.message_file)
+        return 0
+    
+    if 0:
+        report_transition_matrix(args.message_file)
+        return 0
+    
+    if 0:
         report_timebounds(args.message_file)
         return 0
         # show material reservations
