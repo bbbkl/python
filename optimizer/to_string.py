@@ -76,17 +76,19 @@ class ToString(object):
     def scheduling_obj_type(cls, val):
         """Scheduling type 
            Undefined = -1,
-           MRPMovementDemand = 0,
+           DemandDocObj = 0,
            FixedActivityDemand = 1,
            Activity = 2,
            TempActivity = 3,
            PartProc = 4,
            TempPartProc = 5,
            ActivityFallback = 6, // Number used in ERP
-           TempActivityFallback = 7 // Number used in ERP  
+           TempActivityFallback = 7, // Number used in ERP  
+           PlantOrderCDW = 8,
+           SafetyStock = 9
         """
         val = to_int(val)
-        if val == 0: return 'MRPMovementDemand'
+        if val == 0: return 'DemandDocObj'
         if val == 1: return 'FixedActivityDemand'
         if val == 2: return 'Activity'
         if val == 3: return 'TempActivity'
@@ -94,6 +96,8 @@ class ToString(object):
         if val == 5: return 'TempPartProc'
         if val == 6: return 'ActivityFallback'
         if val == 7: return 'TempActivityFallback'
+        if val == 8: return 'PlantOrderCDW'
+        if val == 9: return 'SafetyStock'
         return 'undefined'
         
     @classmethod
@@ -174,7 +178,7 @@ class ToString(object):
            EActivityType_Verfahren  = 2,
            EActivityType_Transport  = 3,
            EActivityType_Flaeche    = 4,
-           EActivityType_StartEnd   = 5,  // Durchlaufzeit Aktivität
+           EActivityType_StartEnd   = 5,  // Durchlaufzeit Aktivitaet
            EActivityType_FlexLength = 15"""
         val = to_int(val)
         if val == 0: return 'Produktion'
