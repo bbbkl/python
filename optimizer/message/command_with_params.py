@@ -10,6 +10,8 @@ class Command_OptimizeCTP(BaseItem):
     """One material reason"""
     def __init__(self, tokens, command):
         BaseItem.__init__(self, tokens, command)
+        if len(self._tokens) == 2 and self._tokens[-1] == '':
+            self._tokens.pop()
 
     def headline_ids(self):
         """get headline for explained mode"""
@@ -27,4 +29,6 @@ class Command_OptimizeCTP(BaseItem):
         return ['DEF_ERPCommandoptimizeCTP_________', 'DEF_ERPCommandoptimizeSAP_________' ]
 
     def token_descriptions(self):
-        return ['optimization_type', 'preserve_dynamic_buffer' ]
+        if len(self._tokens) > 2:
+            return ['optimization_type', 'preserve_dynamic_buffer' ]
+        return ['optimization_type',] # preserve buffer flag was workaround for global dynamic buffer flag
