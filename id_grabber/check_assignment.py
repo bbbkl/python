@@ -2,7 +2,6 @@
 # file: check_assignment.py
 #
 # description
-from pickle import NONE
 
 """\n\n
     script to check assigment quality
@@ -19,7 +18,7 @@ def make_rgx(keys):
     rgx = ''
     for key in keys:
         if key == 'part':
-            rgx += r"%s=(.*\d)" % key
+            rgx += r"%s=(.*\|[-\d]+)" % key
         else:
             rgx += r"%s=(\S+).*" % key
     return rgx
@@ -62,16 +61,29 @@ class Proc:
             self._dict[key] = hit.group(idx+1) 
         self._pos = int(re.search(r"(\d+)", line).group(0))
         self._is_past = line[-2] == 'P'
-        
+    
+    def padded_proc(self):
+        proc = self.process()
+        if proc.find('/') == -1:
+            return 4 * ' ' + proc
+        return proc
+    
+    def padded_tp_end(self):
+        """sample value=2022-01-13 13:15"""
+        val = self.tp_end()
+        if val is None:
+            return "None" + 12 * ' '
+        return val
+    
     def __str__(self):
         msg = "%s duedate=%s pos=%04d dpl=%s prio=%s age=%03d planned=%s pos1=%02d pos2=%02d q=%d %s" % \
-            (self.process(), self.duedate(), self.pos(), self.dpl(), self.prio(), self.age(), self.tp_end(), 
-             self.pos1(), self.pos2(), self.quantity(), "P" if self._is_past else " ")
+            (self.padded_proc(), self.duedate(), self.pos(), self.dpl(), self.prio(), self.age(), 
+             self.padded_tp_end(), self.pos1(), self.pos2(), self.quantity(), "P" if self._is_past else " ")
         if self.cluster() != "" and self.cluster() != self.process()[4:]:
             msg += " cluster=%s" % self.cluster()
         return msg
         
-    def cluster(self): return self._clusterhead if self._clusterhead is not NONE else ""
+    def cluster(self): return self._clusterhead if self._clusterhead is not None else ""
     def process(self): return self._dict['process']
     def duedate(self): return self._dict['duedate']
     def duedate_sort(self):
@@ -86,6 +98,7 @@ class Proc:
     def part(self):
         #return self.part_raw() # part contains quantity -> different quantiy -> different part
         val = self.part_raw()
+        #print("val_raw=%s part=%s" % (val, val[:val.rfind('|')]))
         return val[:val.rfind('|')]
     def quantity(self):
         val = self.part_raw()
@@ -124,7 +137,7 @@ def grep_assignment_cluster(filename):
     return result
     rgx_start = re.compile(r'Scheduled block with \d+ processes')
     rgx_proc = re.compile(r'^\s{20}\s+(\S.*\S+)$')
-    current_cluster_head = NONE
+    current_cluster_head = None
     in_action = False
     for line in open(filename):
         if rgx_start.search(line):
@@ -132,7 +145,7 @@ def grep_assignment_cluster(filename):
             continue
         if in_action:
             hit = rgx_proc.search(line)
-            in_action = hit is not NONE
+            in_action = hit is not None
             if hit:
                 info = hit.group(1)
                 if info[0] == '*':
@@ -227,7 +240,7 @@ def add_planning_results(cluster, headproc_file):
         if(len(tokens) > 3):
             proc = tokens[0]
             proc_short = proc[4:]
-            tpe = tokens[3][:-3]
+            tpe = tokens[-2][:-3]
             if proc in proc_dict:
                 proc_dict[proc].add_end(tpe)
             elif proc_short in proc_dict:
@@ -235,8 +248,9 @@ def add_planning_results(cluster, headproc_file):
     
     for part, procs in cluster.items():
         check_positions(procs)          
-        
-    for part, procs in cluster.items():
+    
+    for part, procs in sorted(cluster.items()):
+        #for part, procs in cluster.items():
         proxy_cluster = procs[0].pos2() == -1
         if len(procs) > 1 and not proxy_cluster:
             print("same part, same quantity covers %s" % part)
