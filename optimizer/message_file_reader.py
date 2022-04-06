@@ -425,9 +425,14 @@ def check_activity_zero_intensity(items):
 
 def get_filter_ids( arg_filter ):
     """check whether we have a filter file or explicit ids"""
+    import sys
+    res = []
     if os.path.isfile(arg_filter):
-        arg_filter = open(arg_filter).readline()[:-1]
-    return arg_filter.split(',')
+        with open(arg_filter) as input:
+            for line in input:
+                for item in line.split(','):
+                    res.append(item.strip())
+    return res
 
 def print_activities(items):
     server_items = [item for item in items if isinstance(item, ServerInfo)]
