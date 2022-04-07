@@ -432,6 +432,8 @@ def get_filter_ids( arg_filter ):
             for line in input:
                 for item in line.split(','):
                     res.append(item.strip())
+    else:
+        res = arg_filter.split(',')
     return res
 
 def print_activities(items):
