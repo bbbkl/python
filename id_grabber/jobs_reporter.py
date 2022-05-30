@@ -77,6 +77,8 @@ class PerformanceTrace:
         for line in self._lines:
             if line.find('buildObjectModel')!=-1:
                 return get_datetime(line)
+            elif line.find('Building ObjectModel')!=-1:
+                return get_datetime(line)
         return None
 
     def get_mid2(self):
@@ -140,9 +142,11 @@ class PerformanceTrace:
         startup = (mid1 - start).total_seconds()
         try:
             mid = (mid2 - mid1).total_seconds()
-            listener = (end - mid2).total_seconds()
         except:
             mid = 0
+        try:
+            listener = (end - mid2).total_seconds()
+        except:
             listener = 0
         return (int(startup), int(mid), int(listener))
 
@@ -151,7 +155,7 @@ class PerformanceTrace:
         hit = re.search(r'([a-z][a-z_]{4}0{2}\d{3})', line)
         if hit:
             val = hit.group(1)
-            if val == "ppopt00011": # temp started - temp ended
+            if val in ["ppopt00016", "ppopt00011",]: # temp started - temp ended
                 val = "ppopt00010"
             return val
         keys = ['updateProcessStructures',
