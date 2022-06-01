@@ -62,6 +62,34 @@ class ResReserved(BaseData):
     def cmd(cls):
         return 351  #  DEF_ERPCommandcreate_ResReserved__
 
+class Resource(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+
+    def id(self):
+        return "%s/%s" % (self.res_kind(), self.res())
+    def res_kind(self):
+        return self._tokens[0]
+    def res(self):
+        return self._tokens[1]
+    def intensity(self):
+        return int(self._tokens[5])
+    def setup_matrix_id(self):
+        if len(self._tokens) > 19:
+            return self._tokens[19]
+        return ""
+        
+    def __str__(self):
+        msg = "Resource res=%-15s int=%d" % (self.id(), self.intensity())
+        mid = self.setup_matrix_id()
+        if mid:
+            msg += " setup_matrix=%s" % mid
+        return msg 
+         
+    @classmethod 
+    def cmd(cls):
+        return 311  #  DEF_ERPCommandcreate_M_Ressource__
+
 class ResourceCst(BaseData):
     def __init__(self, tokens):
         BaseData.__init__(self, tokens)
@@ -86,8 +114,8 @@ class ResourceCst(BaseData):
 
     def __str__(self):
         if self.is_altres():
-            return "ResourceCst %s/%s/%s/%s altRes=%s selected=%s intensity=%d" % (self.proc_id(), self.partproc(), 
-                                                                                   self.act_pos(), self.ident_act(), self.res_id(), self.selected_res(), self.intensity())
+            return "ResourceCst %s/%s/%s/%s altRes=%s selected=%s intensity=%d ident_act=%s" % (self.proc_id(), self.partproc(), 
+                self.act_pos(), self.ident_act(), self.res_id(), self.selected_res(), self.intensity(), self.ident_act())
         else:
             return "ResourceCst %s/%s/%s/%s isAltRes=%s res=%s intensity=%d" % (self.proc_id(), self.partproc(), self.act_pos(), self.ident_act(), 
                                                                                 self.is_altres(), self.res_id(), self.intensity())
@@ -133,24 +161,22 @@ class MaterialCst(BaseData):
         return 355  #  DEF_ERPCommandcreate_Material_____    
     
 def check_altsres(messagefile):
-    items = parse_messagefile(messagefile, [ResourceCst,])
-    item_altres80 = filter(lambda x: x.is_altres() and x.res_kind() == "7" and x.res_id() == "80", items)
-    cnt_all = cnt_selected = 0
-    for res_cst in item_altres80:
-        cnt_all += 1
-        if res_cst.selected_res() != "":
-            cnt_selected += 1
-            print(res_cst, ' ***')
-        else:
-            print(res_cst)
-    print("#altres=%d #selectd=%d\n" % (cnt_all, cnt_selected))
+    """
+    find dangling AltResCsts of fixed activities which have no selected resource
+    such resources tend to be overloaded because optimizer does not know which res is selected
+    """
+    items = parse_messagefile(messagefile, [Activity, ResourceCst,])
+    fixed_acts = filter(lambda x: isinstance(x, Activity) and x.is_frozen(), items)
+    ids_fixed_acts = set()
+    for act in fixed_acts:
+        ids_fixed_acts.add(act.ident_act())
+    unselected_res_csts = filter(lambda x: isinstance(x, ResourceCst) and x.is_altres() and x.ident_act() in ids_fixed_acts, items)
     
-    item_res80 = filter(lambda x: not x.is_altres() and x.res_kind() == "7" and x.res_id() == "80", items)
-    cnt_res80 = 0
-    for res_cst in item_res80:
-        print(res_cst)
-        cnt_res80 += 1
-    print("explicit resource constraints, no altres, #res80=%d" % cnt_res80)
+    #and x.selected_res()=="" \
+    #    and x.ident_act() in ids_fixed_acts, items)
+    #for item in ids_fixed_acts: print(item)
+    
+    for item in unselected_res_csts: print(item)
     
     sys.exit(0)
 
@@ -198,6 +224,16 @@ class Uebaddr(BaseData):
     @classmethod 
     def cmd(cls):
         return 315  #  DEF_ERPCommandcreate_M_UebAdresse_
+    
+def cmp_date(dt1, dt2):
+    "-1 if dt1 < dt2, 1 if dt1 > dt2, 0 otherwise"
+    if dt1 == dt2:
+        return 0
+    dt1_rev = ''.join(dt1.split('.')[::-1])
+    dt2_rev = ''.join(dt2.split('.')[::-1])
+    if dt1_rev < dt2_rev:
+        return -1
+    return 1
 
 class Activity(BaseData):
     _server_date = None
@@ -223,7 +259,11 @@ class Activity(BaseData):
     def is_frozen(self):
         return self._tokens[16] == '1'
     def has_reservation(self):
-        return self.server_date() != self.mat_reservation_date()
+        return self.server_date() != self.mat_reservation_date() and self.mat_reservation_date() != ''
+    def timebound(self):
+        return self._tokens[17]
+    def has_timebound(self):
+        return self._tokens[18] == '3' and cmp_date(self.server_date(), self.timebound()) == -1
     def has_duedate(self):
         return len(self._tokens) > 43 and self._tokens[43] != '?'
     def duedate(self):
@@ -231,9 +271,15 @@ class Activity(BaseData):
     def __str__(self):
         #return "\t".join(self._tokens)
         reservation = " reservation=" + self.mat_reservation_date() if self.has_reservation() else ""
+        timebound = " timebound=" + self.timebound() if self.has_timebound() else ""
+        if reservation and timebound:
+            if cmp_date(reservation, timebound) < 0:
+                reservation = ""
+            else:
+                timebound = ""
         duedate = " duedate=" + self.duedate() if self.has_duedate() else ""
-        return "Activity %s/%s/%s %s%s%s" % (self.proc_id(), self.partproc(), 
-          self.act_pos(), self.ident_act(), reservation, duedate)
+        return "Activity %s/%s/%s %s%s%s%s" % (self.proc_id(), self.partproc(), 
+          self.act_pos(), self.ident_act(), reservation, timebound, duedate)
          
     @classmethod
     def server_date(cls):
@@ -583,13 +629,13 @@ def report_timebounds(message_file):
             out.write(item + '\n')
     
     acts = []
-    activities =  filter(lambda x: isinstance(x, Activity) and x.has_reservation(), items)
+    activities =  filter(lambda x: isinstance(x, Activity) and (x.has_reservation() or x.has_timebound()), items)
     for act in activities:
         acts.append(str(act))
     with open(path_tbd, "w") as out:
         for item in sorted(acts):
             out.write(item + '\n')
-            
+                     
 def report_transition_matrix(message_file):
     items = parse_messagefile(message_file, [Uebort, Uebaddr])
     for item in items:
@@ -613,7 +659,15 @@ def show_sub_producers(message_file):
             qty = ('%f' % pp.free_quantity()).rstrip('0').rstrip('.')
             print("%s material=%s free_quantity=%s" % (pp, pp.material_key(), qty))
     return 0
-                     
+
+def show_resources(message_file):
+    items = parse_messagefile(message_file, [Resource,])
+    item_dict = {}
+    for item in items:
+        item_dict[item.id()] = item
+    for key in sorted(item_dict.keys()):
+        print(item_dict[key])
+                         
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -643,9 +697,17 @@ def main():
     args = parse_arguments()
  
  
-    # check_altsres(args.message_file)
+    #check_altsres(args.message_file)
     
     if 1:
+        show_resources(args.message_file)
+        return 0
+    
+    if 0: # stadler timebounds
+        report_timebounds(args.message_file)
+        return 0
+    
+    if 0:
         show_sub_producers(args.message_file)
         return 0
     
@@ -683,10 +745,6 @@ def main():
     
     if 0:
         show_forein_acts(items)
-        sys.exit(0)
-
-    if 0: # stadler timebounds
-        show_timebounds(items)
         sys.exit(0)
     
     if 1:
