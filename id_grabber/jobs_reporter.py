@@ -139,6 +139,9 @@ class PerformanceTrace:
             mid1 = start
         if mid2 is None:
             mid2 = end
+        if mid1 is None and start is None:
+            for idx, line in enumerate(self._lines):
+                print("%d >%s<" % (idx, line[:-1]))
         startup = (mid1 - start).total_seconds()
         try:
             mid = (mid2 - mid1).total_seconds()
@@ -305,6 +308,8 @@ def performance_report(logfile, mode_52):
     rgx_end = re.compile(r'.*Send CTP\-Prod Solution to ERP.*')
 
     rgx_all = [rgx_start, rgx_mid]
+    
+    rgx_starts_with_timestamp = re.compile(r'^\d{2}\.\d{2}\.\d{4}')
 
     performance_items = []
     job_to_item = {}
@@ -329,6 +334,9 @@ def performance_report(logfile, mode_52):
             line = new_line
             prev_line = None
 
+        if not rgx_starts_with_timestamp.search(line):
+            continue
+
         for rgx in rgx_all:
             hit = rgx.search(line)
             if hit:
@@ -349,7 +357,7 @@ def performance_report(logfile, mode_52):
 
                 elif rgx == rgx_start:
                     if perf_item is not None:
-                        if perf_item.line_count()==1 and mode_52:
+                        if perf_item.line_count() == 1 and mode_52:
                             perf_item.add(line)
                         elif job_no is not None and job_no == perf_item.job():
                             perf_item.add(line)
