@@ -152,11 +152,11 @@ class PerformanceTrace:
         startup = (mid1 - start).total_seconds()
         try:
             mid = (mid2 - mid1).total_seconds()
-        except:
+        except TypeError:
             mid = 0
         try:
             listener = (end - mid2).total_seconds()
-        except:
+        except TypeError:
             listener = 0
         return (int(startup), int(mid), int(listener))
 
@@ -516,6 +516,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except:
+    except Exception:
         print('Script failed')
         raise
