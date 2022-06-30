@@ -60,15 +60,18 @@ class PerformanceTrace:
             self._job = job
 
     def get_type(self):
+        ctp_candidate = False
         for line in self._lines:
             if line.find('calcCtp') != -1 or line.find('CTP') != -1:
-                return 'ctp'
+                ctp_candidate = True
             if line.find('calcAll') != -1:
                 return 'opti'
             if line.find('sync only') != -1 or \
                line.find('begin syncronize') != -1 or \
                line.find('Optimization finished sync done') != -1:
                 return 'sync'
+        if ctp_candidate:
+            return 'ctp'
         return 'unknown'
 
     def get_proc_act_info(self):
