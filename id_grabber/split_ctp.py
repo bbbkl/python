@@ -94,6 +94,19 @@ def split_ctp(filename, strip_1st=0):
     if strip_1st:
         return fn_out
 
+def make_sync(filename):
+    rgx = re.compile("^2\t120")
+    encoding_id = test_encoding(filename)
+    tmp_file = filename + ".tmp"
+    with open(filename, "r", encoding=encoding_id) as input, open(tmp_file, "w", encoding=encoding_id) as output:
+        for line in input:
+            if rgx.search(line):
+                line = line.replace('120', '196')
+                print("yepp, converted opti(120) to sync(196)")
+            output.write(line)
+    os.unlink(filename)
+    os.rename(tmp_file, filename)
+
 def parse_arguments():
     """parse arguments from command line"""
     parser = ArgumentParser(description=DESCRIPTION)
@@ -105,6 +118,9 @@ def parse_arguments():
     parser.add_argument('-m', '--strip_many', action="store_true", # or stare_false
                       dest="strip_many", default=False, # negative store value
                       help="treat message_file as directory and strip all containted *.dat files")
+    parser.add_argument('-ms', '--make_sync', action="store_true", # or stare_false
+                      dest="make_sync", default=False, # negative store value
+                      help="convert optimization to synchronization in place, do nth else")
     return parser.parse_args()
 
 def main():
@@ -116,6 +132,8 @@ def main():
         strip(filename)
     elif args.strip_many:
         strip_many(filename)
+    elif args.make_sync:
+        make_sync(filename)
     else:
         split_ctp(filename)
 
