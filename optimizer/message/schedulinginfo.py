@@ -25,8 +25,8 @@ class SchedulingInfo(BaseItem):
         return ['DEF_APSCommandcreate_SchedInfo____',]
 
     def token_descriptions(self):
-        return ['01 objTypeCode', '02 objId', '03 priority', '04 aps_date', '05 mrp_level', 
-                '06 with_ovl', '07 planning_pos', '08 age']
+        return ['objTypeCode', 'objId', 'priority', 'aps_date', 'mrp_level',
+                'with_ovl', 'planning_pos', 'age', 'job_no']
 
 
 class SchedulingTrigger(BaseItem):
@@ -46,5 +46,5 @@ class SchedulingTrigger(BaseItem):
         return ['DEF_APSCommandcreate_SchedTrigger_',]
 
     def token_descriptions(self):
-        return ['01 demandObjType', '02 demandId', '03 demand_date', 
-                '04 coverObjType', '05 coverId']
+        return ['demandObjType', 'demandId', 'demand_date',
+                'coverObjType', 'coverId', 'job_no']

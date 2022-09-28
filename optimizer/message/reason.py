@@ -288,7 +288,7 @@ class ReasonHead(BaseItem):
     def token_descriptions(self):
         return ['head_obj_type', 'part_process', 'is_cluster_reason', 'is_ctp',
                 'due_date', 'due_time',
-                'optimization_type', 'opt_target', 'reasoning_state', 'is_cluster_reason_head']
+                'optimization_type', 'opt_target', 'reasoning_state', 'is_cluster_reason_head', 'job_no']
 
 class Reason(BaseItem):
     """One sub reason which belongs to a reason head"""
@@ -353,7 +353,7 @@ class Reason(BaseItem):
         else:
             res.extend(['par10', 'par11', 'par12', 'par13', 'par14', 'par15', 'par16', 'par17'])
 
-        res.extend(['verification_state',])
+        res.extend(['verification_state', 'job_no'])
 
         return res
 
