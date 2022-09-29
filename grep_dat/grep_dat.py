@@ -73,14 +73,14 @@ class Resource(BaseData):
     def res(self):
         return self._tokens[1]
     def intensity(self):
-        return int(self._tokens[5])
+        return float((self._tokens[5]).replace(',', '.'))
     def setup_matrix_id(self):
         if len(self._tokens) > 19:
             return self._tokens[19]
         return ""
         
     def __str__(self):
-        msg = "Resource res=%-15s int=%d" % (self.id(), self.intensity())
+        msg = "Resource res=%-15s int=%.1f" % (self.id(), self.intensity())
         mid = self.setup_matrix_id()
         if mid:
             msg += " setup_matrix=%s" % mid
@@ -113,12 +113,16 @@ class ResourceCst(BaseData):
         return self._tokens[11]
 
     def __str__(self):
+        id_act = "%s/%s/%s" % (self.proc_id(), self.partproc(), self.act_pos())
+        # id_act += "/%s" % self.ident_act()
         if self.is_altres():
-            return "ResourceCst %s/%s/%s/%s altRes=%s selected=%s intensity=%d ident_act=%s" % (self.proc_id(), self.partproc(), 
-                self.act_pos(), self.ident_act(), self.res_id(), self.selected_res(), self.intensity(), self.ident_act())
+            return "ResourceCst %s altRes=%s selected=%s intensity=%d ident_act=%s" % (id_act,
+                self.res_id(), self.selected_res(), self.intensity(), self.ident_act())
         else:
-            return "ResourceCst %s/%s/%s/%s isAltRes=%s res=%s intensity=%d" % (self.proc_id(), self.partproc(), self.act_pos(), self.ident_act(), 
-                                                                                self.is_altres(), self.res_id(), self.intensity())
+            result = "ResourceCst %s res=%s" % (id_act, self.res_id())
+            if self.intensity() != 1:
+                result += " intensity=%d" % self.intensity()
+            return result
          
     @classmethod 
     def cmd(cls):
@@ -235,6 +239,52 @@ def cmp_date(dt1, dt2):
         return -1
     return 1
 
+class PoolSelection(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+
+    def ident_act(self):
+        return self._tokens[0]
+    def res_kind(self):
+        return self._tokens[3]
+    def res(self):
+        return self._tokens[4]
+    def tp_start(self):
+        return "%s %s" % (self._tokens[5], self._tokens[6])
+    def tp_end(self):
+        return "%s %s" % (self._tokens[7], self._tokens[8])
+
+    def __str__(self):
+        return "%s %s/%s start=%s end=%s" % \
+               (self.ident_act(), self.res_kind(), self.res(), self.tp_start(), self.tp_end())
+
+    @classmethod
+    def cmd(cls):
+        return 838  # DEF_APSCommandcreate_PoolSelection
+
+class MbActivity(BaseData):
+    def __init__(self, tokens):
+        BaseData.__init__(self, tokens)
+
+    def proc_id(self):
+        return self._tokens[9]
+    def partproc(self):
+        return self._tokens[5]
+    def ident_act(self):
+        return self._tokens[0]
+    def tp_start(self):
+        return "%s %s" % (self._tokens[1], self._tokens[2])
+    def tp_end(self):
+        return "%s %s" % (self._tokens[3], self._tokens[4])
+
+    def __str__(self):
+        return "%s/%s (%s) start=%s end=%s" % (self.proc_id(), self.partproc(),
+                                               self.ident_act(), self.tp_start(), self.tp_end())
+
+    @classmethod
+    def cmd(cls):
+        return 840  # DEF_APSCommandcreate_ActDispatch__
+
 class Activity(BaseData):
     _server_date = None
     
@@ -346,7 +396,8 @@ class PartProcess(BaseData):
         mat = self._tokens[3]
         if self._tokens[4] != '':
             mat += "/var=%s" % self._tokens[4]
-        if self._tokens[15] != '':
+        # do not show default mrp area 0
+        if self._tokens[15] != '' and self._tokens[15] != '0':
             mat += "/%s" % self._tokens[15]
         return mat
     def duedate(self):
@@ -368,9 +419,16 @@ class Process:
         self._partprocs = {} #self._head_ppid : head_partproc}
         self._activities = {}
         self._edges = []
+        self._res_csts = []
+     
+    def __str__(self):
+        return "proc id=%s/%s quantity=%d #pp=%d #act=%d" % \
+            (self.proc_area(), self.proc_id(), int(self.quantity()), self.pproc_cnt(), self.act_cnt())
      
     def edges(self):
-        return self._edges   
+        return self._edges
+    def res_csts(self):
+        return self._res_csts   
     def partprocs(self):
         return self._partprocs
     def act_cnt(self):
@@ -389,6 +447,8 @@ class Process:
         return self.head_partproc().duedate()
     def material(self):
         return self.head_partproc().material()
+    def quantity(self):
+        return self.head_partproc().free_quantity()
     
     def add_partproc(self, partproc):
         self._partprocs[partproc.partproc_id()] = partproc
@@ -399,6 +459,8 @@ class Process:
         self._activities[activity.ident_act()] = activity
     def add_edge(self, edge):
         self._edges.append(edge)
+    def add_res_cst(self, res_cst):
+        self._res_csts.append(res_cst)
         
     @classmethod 
     def server_date(cls):
@@ -438,6 +500,7 @@ def build_procs(items):
     partprocs = filter(lambda x: isinstance(x, PartProcess), items)
     activities = filter(lambda x: isinstance(x, Activity), items)
     edges = filter(lambda x: isinstance(x, Edge), items)
+    res_csts = filter(lambda x: isinstance(x, ResourceCst), items)
     
     for server_info in filter(lambda x: isinstance(x, ServerInfo), items):
         Process.set_server_date(server_info.sever_date())
@@ -453,6 +516,10 @@ def build_procs(items):
         proc_id = edge.proc_id()
         if proc_id in procs:
             procs[proc_id].add_edge(edge)
+    for res_cst in res_csts:
+        proc_id = res_cst.proc_id()
+        if proc_id in procs:
+            procs[proc_id].add_res_cst(res_cst)
     return procs
             
 def get_key_regex(classes):
@@ -660,6 +727,15 @@ def show_sub_producers(message_file):
             print("%s material=%s free_quantity=%s" % (pp, pp.material_key(), qty))
     return 0
 
+def show_proc_with_fixed_acts(message_file):
+    activities = parse_messagefile(message_file, [Activity,])
+    fixed_acts = filter(lambda x: x.is_frozen(), activities)
+    procs = set()
+    for act in fixed_acts:
+        procs.add(act.proc_id())
+    for pid in procs:
+        print(pid)
+
 def show_resources(message_file):
     items = parse_messagefile(message_file, [Resource,])
     item_dict = {}
@@ -667,7 +743,69 @@ def show_resources(message_file):
         item_dict[item.id()] = item
     for key in sorted(item_dict.keys()):
         print(item_dict[key])
-                         
+ 
+def pirlo_print_proc(proc):
+    print('\t%s' % proc)
+    res_ids = ['10-001', '10-002', '20-001', '20-002']
+    for res_cst in proc.res_csts(): # filter(lambda x: x.res_id() in res_ids, proc.res_csts()):
+        print('\t\t%s' % res_cst)
+ 
+def pirlo_rename_info(processes):
+    tafel_procs = filter(lambda x: x.material().find("820")==0 or x.material().find("822")==0, processes)
+    mat2procs = {}
+    cnt = 0
+    for proc in tafel_procs:
+        material = proc.material()
+        mat2procs.setdefault(material, [])
+        mat2procs[material].append(proc)
+        cnt += 1
+    for material in mat2procs:
+        print("material=%s #procs=%d" % (material, len(mat2procs[material])))
+        for proc in mat2procs[material]:
+            pirlo_print_proc(proc)
+    print("#procs=%d #tafel-procs=%d #tafel-ids=%d" % (len(processes), cnt, len(mat2procs)))
+    rename_info = {}
+    if 0:
+        for idx_mat, material in enumerate(mat2procs):
+            mat = "TAF%03d" % idx_mat
+            for idx_proc, proc in enumerate(mat2procs[material]):
+                id_proc = proc.proc_id()
+                dst = "%s%s_%d" % (id_proc[:3], mat, idx_proc)
+                rename_info[id_proc] = dst
+    return rename_info
+    
+def pirlo_do_rename(rename_info, message_file):
+    out_file = message_file.replace(".dat", ".renamed.dat")
+    out = open(out_file, "w")
+    for line in open(message_file):
+        handled = False
+        for key, dst in rename_info.items():
+            if line.find(key) != -1:
+                out.write(line.replace(key, dst))
+                handled = True
+                break
+        if not handled:
+            out.write(line)
+    out.close()
+
+def show_pool_selections(message_file):
+    items = parse_messagefile(message_file, [MbActivity, PoolSelection,])
+    pool_selections = filter(lambda x: isinstance(x, PoolSelection), items)
+    act2pool = {}
+    for selection in pool_selections:
+        act2pool.setdefault(selection.ident_act(), []).append(selection)
+
+    activities = filter(lambda x: isinstance(x, MbActivity), items)
+    for act in activities:
+        id = act.ident_act()
+        if id in act2pool:
+            print(act)
+            for sel in act2pool[id]:
+                msg = str(sel)
+                print("\t%s" % msg[msg.find(' ')+1:])
+            print()
+        #sys.exit(0)
+
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -695,28 +833,37 @@ def parse_arguments():
 def main():
     """main function"""
     args = parse_arguments()
+    msg_file = args.message_file
  
  
-    #check_altsres(args.message_file)
-    
+    #check_altsres(msg_file)
+
     if 1:
+        show_pool_selections(msg_file)
+        return
+
+    if 0:
+        show_proc_with_fixed_acts(msg_file)
+        return
+    
+    if 0:
         show_resources(args.message_file)
         return 0
     
     if 0: # stadler timebounds
-        report_timebounds(args.message_file)
+        report_timebounds(msg_file)
         return 0
     
     if 0:
-        show_sub_producers(args.message_file)
+        show_sub_producers(msg_file)
         return 0
     
     if 0:
-        report_transition_matrix(args.message_file)
+        report_transition_matrix(msg_file)
         return 0
     
     if 0:
-        report_timebounds(args.message_file)
+        report_timebounds(msg_file)
         return 0
         # show material reservations
         items = parse_messagefile(args.message_file, [Activity, ServerInfo])
@@ -728,12 +875,19 @@ def main():
         return 0
  
     if 0:
-        for item in parse_messagefile(args.message_file, [ResReserved,]):
+        for item in parse_messagefile(msg_file, [ResReserved,]):
             print(item)
         return 0
 
-    items = parse_messagefile(args.message_file, [PartProcess, Activity, Edge, ServerInfo])
+    items = parse_messagefile(args.message_file, [PartProcess, Activity, Edge, ResourceCst, ServerInfo])
     procs = build_procs(items)
+    
+    if 1:
+        info = pirlo_rename_info(procs.values())
+        for src, dst in info.items():
+            print("%s -> %s" % (src, dst))
+        #pirlo_do_rename(info, args.message_file)
+        return
 
     if args.to_sonic:
         sched_trigger = parse_sched_trigger(args.to_sonic)
