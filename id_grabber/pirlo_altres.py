@@ -24,7 +24,12 @@ class SetupRes:
     def __init__(self, full_path_name):
         self.path_name = full_path_name
         self.items = parse_file(full_path_name)
-        init_tr_te(self.items)
+        self.set_item_res()
+
+    def set_item_res(self):
+        res = self.get_res()
+        for item in self.items:
+            item.set_res(res)
 
     def get_res(self):
         name = os.path.basename(self.path_name)
@@ -33,33 +38,60 @@ class SetupRes:
     def get_items(self):
         return self.items
 
+    def mark_successor_activities(self):
+        proc2idx = {}
+        last_found = -1
+        for idx, item in enumerate(self.get_items()):
+            proc_id = item.get_proc_id()
+            proc2idx.setdefault(proc_id, idx)
+            if idx - proc2idx[proc_id] > 1:
+                prev_item = self.get_items()[proc2idx[proc_id]]
+                if prev_item.get_lack() != item.get_lack():
+                    item.set_stopper()
+                    proc2idx[proc_id] = idx
+
 class SetupItem:
     header_items = []
 
     def __init__(self, values):
         self.tokens = values
-        self.tr_or_te = None  # 1=tr, 0=te
+        self.stopper = False
+        self.res = None
+
+    def set_res(self, res):
+        self.res = res
+    def get_res(self):
+        return self.res
+
+    def set_stopper(self):
+        self.stopper = True
+
+    def is_stopper(self):
+        return self.stopper
+
+    def get_tokens(self):
+        return self.tokens
 
     def get_te(self):
         try:
             idx = SetupItem.get_index('Proc_Time')
             return int(self.tokens[idx])
-        return -1
+        except ValueError:
+            return -1
 
     def get_tr(self):
         try:
             idx = SetupItem.get_index('Setup_Time')
             return int(self.tokens[idx])
-        return -1
+        except ValueError:
+            return -1
 
-    def set_is_tr(self):
-        self.tr_or_te = 1
-    def set_is_te(self):
-        self.tr_or_te = 0
-    def is_tr(self):
-        if self.tr_or_te is not None:
-            return self.tr_or_te
-        return None
+    def is_setup_act(self):
+        return self.get_tr()>0 and self.get_te() <= 0
+
+    def get_fullact_info(self):
+        idx = SetupItem.get_index('Activity_ID')
+        return self.tokens[idx]
 
     def get_proc_id(self):
         idx = SetupItem.get_index('Activity_ID')
@@ -112,26 +144,43 @@ class SetupItem:
     def get_index(cls, key):
         return cls.header_items.index(key)
 
-def init_tr_te(setup_items):
-    if len(setup_items) == 0: return
-    if len(setup_items) == 1:
-        setup_items[0].set_is_te()
-        return
-    for idx, item in enumerate(setup_items):
-        if idx == 0:
-            next_item = setup_items[idx+1]
-            if item.get_setup_type() == next_item.get_setup_type() and \
-                item.get_partproc_id() == next_item.get_partproc_id():
-                item.set_is_tr()
-            else:
-                item.set_is_te()
-        else:
-            prev_item = setup_items[idx-1]
-            if item.get_setup_type() == prev_item.get_setup_type() and \
-                item.get_partproc_id() == prev_item.get_partproc_id():
-                item.set_is_te()
-            else:
-                item.set_is_tr()
+def is_multi_res_stopper(stopper_items):
+    res = None
+    for _, item in stopper_items:
+        if res is None:
+            res = item.get_res()
+        if res != item.get_res():
+            return True
+    return False
+def show_stopper(alternatives, counters):
+    items = []
+    for alt in alternatives:
+        items.extend(alt.get_items())
+
+    cnt_all = Counter()
+    for counter in counters.values():
+        cnt_all.update(counter)
+
+    proc2items = {}
+    stopper_ids = []
+    for idx, item in enumerate(items):
+        proc_id = item.get_proc_id()
+        proc2items.setdefault(proc_id, [])
+        proc2items[proc_id].append((idx, item))
+        if item.is_stopper() and proc_id not in stopper_ids:
+            stopper_ids.append(proc_id)
+    for proc_id in stopper_ids:
+        # if not is_multi_res_stopper(proc2items[proc_id]): continue
+        prev_item = None
+        tuples = proc2items[proc_id]
+        tuples.sort(key=lambda x: x[1].get_start())
+        for idx, item in tuples:
+            if prev_item and prev_item.get_lack() == item.get_lack() and prev_item.get_tr()!=item.get_tr():
+                continue
+            cnt = cnt_all[item.get_lack()]
+            print("{:4d} {:20} cnt={:<4d} {:10} {}".format(idx, item.get_lack(), cnt, item.get_res(), item.get_fullact_info()))
+            prev_item = item
+        print()
 
 def parse_file(filename):
     with open(filename) as file:
@@ -140,6 +189,8 @@ def parse_file(filename):
         SetupItem.set_header(header)
         items = []
         for line in lines[1:]:
+            if line.find('setup_spacer') != -1:
+                continue
             tokens = line.split(';')
             if len(tokens) and tokens[0]:
                 items.append(SetupItem(tokens))
@@ -152,9 +203,8 @@ def parse_header(line):
 def print_key(key, counters, tr, te):
     res = ''
     for cnt in counters:
-        res += str(cnt[key]) if key in cnt else '0'
-        res += '\t'
-    print(res + key + " tr=%0.1f" % (tr / 1440) + "/te=%0.1f" % (te / 1440))
+        res += "{:6}\t".format(cnt[key] if key in cnt else 0)
+    print('{} {:20} tr={:<5.1f} te={:<5.1f}'.format(res, key, (tr / 60), (te / 60) ))
 
 def pretty_print(res2counter, times):
     all = Counter()
@@ -191,7 +241,9 @@ def main():
 
     alternatives = []
     for idx, fn in enumerate(args.csv_files):
-        alternatives.append(SetupRes(fn))
+        setup_res = SetupRes(fn)
+        setup_res.mark_successor_activities()
+        alternatives.append(setup_res)
 
     counters = {}
     for idx, alt in enumerate(alternatives):
@@ -210,12 +262,13 @@ def main():
         for item in setup_res.get_items():
             key = item.get_lack()
             times.setdefault(key, {'te' : 0, 'tr' : 0})
-            if item.is_tr():
-                times[key]['tr'] += item.get_duration()
-            else:
-                times[key]['te'] += item.get_duration()
+            times[key]['tr'] += item.get_tr()
+            times[key]['te'] += item.get_te()
 
     pretty_print(counters, times)
+    print()
+    show_stopper(alternatives, counters)
+
 
 
 
