@@ -2,39 +2,21 @@
 # file: temp.py
 #
 # description
-
 """\n\n
     script to try something out and which is not lost after shutdown
 """
-import re
+
+# import re
 from argparse import ArgumentParser
-import os.path
-import shutil
-from subprocess import run, PIPE
-from glob import glob
+# import os.path
+# import shutil
+# from glob import glob
 
 VERSION = '0.1'
 
-def convert_dotfiles(dotfile_dir):
-    dotfiles = []
-    for fn in glob(dotfile_dir + "/*.dot"):
-        if fn[-4:] != ".dot":
-            continue
-        if os.path.exists(fn + ".svg"):
-            continue
-        dotfiles.append(fn)
-    
-    for dot_file in dotfiles:
-        call_graphviz(dot_file)
-        print("handled %s" % dot_file)
+def do_sth(message_file):
+    pass
 
-def call_graphviz(dot_file):
-    """call graphviz for given dotfile"""
-    exe = r"C:\Program Files (x86)\Graphviz2.38\bin\dot.exe"
-    params = "-Gcharset=latin1 -Tsvg -o%s.svg %s" % (dot_file, dot_file)        
-    cmd = '%s %s' % (exe, params)
-    run(cmd) #, stdout=outstream, stderr=outstream)
-    
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -59,8 +41,7 @@ def main():
     """main function"""
     args = parse_arguments()
 
-    convert_dotfiles(args.message_file)
-    
+    do_sth(args.message_file)
     
 if __name__ == "__main__":
     try:
