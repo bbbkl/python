@@ -301,7 +301,7 @@ def remove_fixations(filename, encoding_id):
     flush_buffer(output, data_line, buffered_lines)
     output.close()
 
-def grep_proc_ids(filename, res_id, encoding_id):
+def grep_proc_ids(filename, res_ids, encoding_id):
     """filter all proc ids which have a resource constraint with given res_id"""
     ids = set()
     data_line = None
@@ -311,7 +311,7 @@ def grep_proc_ids(filename, res_id, encoding_id):
             command = Command(tokens)
             if command.cmd_id() == 350 and data_line: # DEF_ERPCommandcreate_Resource_____
                 tokens = get_tokens(data_line)
-                if tokens[6] == res_id:
+                if tokens[6] in res_ids:
                     ids.add(tokens[1]) # process id
         elif line_type == ID_DATA:
             data_line = line
@@ -528,7 +528,7 @@ def parse_arguments():
                       help="filter all processes out of message file which match given regular expression")
     parser.add_argument('-resf', '--res-filter', metavar='string', # or stare_false
                       dest="res_filter", default='', # negative store value
-                      help="filter all processes out of message file which match given resource id")
+                      help="filter all processes out of message file which match any of the comma separated given resource ids")
     parser.add_argument('-i', '--inverse_filter', action="store_true", # or stare_false
                       dest="inverse_filter", default=False, # negative store value
                       help="inverse filter. filter only specified processes; all other remain.")
@@ -562,7 +562,8 @@ def main():
         return 0
 
     if args.res_filter != '':
-        ids = grep_proc_ids(args.message_file, args.res_filter, encoding)
+        res_ids = args.res_filter.split(',')
+        ids = grep_proc_ids(args.message_file, res_ids, encoding)
         print("filter ids='%s'" % ids)
         strip_message_file(args.message_file, ids, '', args.describe_commands, args.inverse_filter, encoding)
         return 0
