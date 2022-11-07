@@ -31,6 +31,9 @@ class SetupRes:
         for item in self.items:
             item.set_res(res)
 
+    def get_path_name(self):
+        return self.path_name
+
     def get_res(self):
         name = os.path.basename(self.path_name)
         return name.split('.')[-3]
@@ -136,6 +139,10 @@ class SetupItem:
         duration = self.get_end() - self.get_start()
         return int(duration.total_seconds() / 60)
 
+    def is_fixed(self):
+        idx = SetupItem.get_index('Frozen')
+        return self.tokens[idx] == '1'
+
     @classmethod
     def set_header(cls, header_items):
         cls.header_items = header_items
@@ -215,12 +222,52 @@ def pretty_print(res2counter, times):
     for key, cnt in all.most_common():
         print_key(key, res2counter.values(), times[key]['tr'], times[key]['te'])
 
+def get_csv_files(csv_files):
+    if len(csv_files)==1 and os.path.isdir(csv_files[0]):
+        return glob(csv_files[0] + "/*.csv")
+    return csv_files
+
+def report_fixed_line(items, idx_from, idx_to):
+    item1 = items[idx_from]
+    item2 = items[idx_to]
+    tp_start = item1.get_start().strftime('%d.%m. %H:%M')
+    tp_end = item2.get_start().strftime('%d.%m. %H:%M')
+    print("{} - {} {:20} #{}".format(tp_start, tp_end, item1.get_lack(), idx_to - idx_from + 1))
+
+
+def report_fixed_start(setup_res):
+    """"report day + res and condensed sequence of fixed values"""
+    headline = setup_res.get_res()
+    hit = re.search(r'pirlo_2022(\d{2})(\d{2})', setup_res.get_path_name())
+    if hit:
+        headline += " %s.%s." % (hit.group(2), hit.group(1))
+    print(headline)
+    idx_start = -1
+    curr_value = None
+    items = setup_res.get_items()
+    for idx, item in enumerate(items):
+        if not item.is_fixed():
+            if curr_value is None:
+                continue
+            else:
+                report_fixed_line(items, idx_start, idx-1)
+                break
+        elif curr_value != item.get_lack():
+            if curr_value is not None:
+                report_fixed_line(items, idx_start, idx-1)
+            idx_start = idx
+            curr_value = item.get_lack()
+    print()
+
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('csv_files', nargs='+', help='setup csv files')
+    parser.add_argument('-f', '--fixed_start', action="store_true",  # or stare_false
+                        dest="fixed_start", default=False,  # negative store value
+                        help="report fixed start values, start - end value #items")
 
     """
     parser.add_argument('-m', '--mat-id', metavar='string', # or stare_false
@@ -239,11 +286,18 @@ def main():
     """main function"""
     args = parse_arguments()
 
+    csv_files = get_csv_files(args.csv_files)
+
     alternatives = []
-    for idx, fn in enumerate(args.csv_files):
+    for idx, fn in enumerate(csv_files):
         setup_res = SetupRes(fn)
         setup_res.mark_successor_activities()
         alternatives.append(setup_res)
+
+    if args.fixed_start:
+        for alt in alternatives:
+            report_fixed_start(alt)
+        return 0
 
     counters = {}
     for idx, alt in enumerate(alternatives):
