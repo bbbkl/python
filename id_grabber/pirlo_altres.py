@@ -23,7 +23,8 @@ def get_datetime(tp_as_string):
 class SetupRes:
     def __init__(self, full_path_name):
         self.path_name = full_path_name
-        self.items = parse_file(full_path_name)
+        self.col_lookup = {}
+        self.items = self.parse_file(full_path_name)
         self.set_item_res()
 
     def set_item_res(self):
@@ -53,11 +54,27 @@ class SetupRes:
                     item.set_stopper()
                     proc2idx[proc_id] = idx
 
+    def parse_file(self, filename):
+        with open(filename) as file:
+            lines = [line.rstrip() for line in file]
+            header = parse_header(lines[0])
+            for idx, col in enumerate(header):
+                self.col_lookup[col] = idx
+            items = []
+            for line in lines[1:]:
+                if line.find('setup_spacer') != -1:
+                    continue
+                tokens = line.split(';')
+                if len(tokens) and tokens[0]:
+                    items.append(SetupItem(tokens, self.col_lookup))
+            return items
+
 class SetupItem:
     header_items = []
 
-    def __init__(self, values):
+    def __init__(self, values, col_lookup):
         self.tokens = values
+        self.col_lookup = col_lookup
         self.stopper = False
         self.res = None
 
@@ -75,16 +92,19 @@ class SetupItem:
     def get_tokens(self):
         return self.tokens
 
+    def get_idx(self, key):
+        return self.col_lookup[key]
+
     def get_te(self):
         try:
-            idx = SetupItem.get_index('Proc_Time')
+            idx = self.get_idx('Proc_Time')
             return int(self.tokens[idx])
         except ValueError:
             return -1
 
     def get_tr(self):
         try:
-            idx = SetupItem.get_index('Setup_Time')
+            idx = self.get_idx('Setup_Time')
             return int(self.tokens[idx])
         except ValueError:
             return -1
@@ -93,44 +113,44 @@ class SetupItem:
         return self.get_tr()>0 and self.get_te() <= 0
 
     def get_fullact_info(self):
-        idx = SetupItem.get_index('Activity_ID')
+        idx = self.get_idx('Activity_ID')
         return self.tokens[idx]
 
     def get_proc_id(self):
-        idx = SetupItem.get_index('Activity_ID')
+        idx = self.get_idx('Activity_ID')
         tokens = self.tokens[idx].split(' ')
         return tokens[0]
 
     def get_process_area(self):
-        idx = SetupItem.get_index('Activity_ID')
+        idx = self.get_idx('Activity_ID')
         tokens = self.tokens[idx].split(' ')
         return tokens[1]
 
     def get_partproc_id(self):
-        idx = SetupItem.get_index('Activity_ID')
+        idx = self.get_idx('Activity_ID')
         tokens = self.tokens[idx].split(' ')
         return int(tokens[2])
 
     def get_act_pos(self):
-        idx = SetupItem.get_index('Activity_ID')
+        idx = self.get_idx('Activity_ID')
         tokens = self.tokens[idx].split(' ')
         return int(tokens[3])
 
     def get_setup_type(self):
-        idx = SetupItem.get_index('Sol-SetupType')
+        idx = self.get_idx('Sol-SetupType')
         return self.tokens[idx]
 
     def get_lack(self):
-        idx = SetupItem.get_index('ActivityClass')
+        idx = self.get_idx('ActivityClass')
         return self.tokens[idx]
 
     def get_start(self):
-        idx = SetupItem.get_index('Start')
+        idx = self.get_idx('Start')
         tp = self.tokens[idx]
         return get_datetime(tp)
 
     def get_end(self):
-        idx = SetupItem.get_index('End')
+        idx = self.get_idx('End')
         tp = self.tokens[idx]
         return get_datetime(tp)
 
@@ -140,16 +160,8 @@ class SetupItem:
         return int(duration.total_seconds() / 60)
 
     def is_fixed(self):
-        idx = SetupItem.get_index('Frozen')
+        idx = self.get_idx('Frozen')
         return self.tokens[idx] == '1'
-
-    @classmethod
-    def set_header(cls, header_items):
-        cls.header_items = header_items
-
-    @classmethod
-    def get_index(cls, key):
-        return cls.header_items.index(key)
 
 def is_multi_res_stopper(stopper_items):
     res = None
@@ -189,20 +201,6 @@ def show_stopper(alternatives, counters):
             prev_item = item
         print()
 
-def parse_file(filename):
-    with open(filename) as file:
-        lines = [line.rstrip() for line in file]
-        header = parse_header(lines[0])
-        SetupItem.set_header(header)
-        items = []
-        for line in lines[1:]:
-            if line.find('setup_spacer') != -1:
-                continue
-            tokens = line.split(';')
-            if len(tokens) and tokens[0]:
-                items.append(SetupItem(tokens))
-        return items
-
 def parse_header(line):
     tokens = line.split(';')
     return tokens[:-3]
@@ -227,12 +225,13 @@ def get_csv_files(csv_files):
         return glob(csv_files[0] + "/*.csv")
     return csv_files
 
-def report_fixed_line(items, idx_from, idx_to):
+def report_group_line(items, idx_from, idx_to):
     item1 = items[idx_from]
     item2 = items[idx_to]
     tp_start = item1.get_start().strftime('%d.%m. %H:%M')
     tp_end = item2.get_start().strftime('%d.%m. %H:%M')
-    print("{} - {} {:20} #{}".format(tp_start, tp_end, item1.get_lack(), idx_to - idx_from + 1))
+    cnt_fixed = sum(map(lambda x: x.is_fixed(), items[idx_from:idx_to+1]))
+    print("{} - {} {:20} #{:<3} ({} fix)".format(tp_start, tp_end, item1.get_lack(), idx_to - idx_from + 1, cnt_fixed))
 
 
 def report_fixed_start(setup_res):
@@ -246,15 +245,15 @@ def report_fixed_start(setup_res):
     curr_value = None
     items = setup_res.get_items()
     for idx, item in enumerate(items):
-        if not item.is_fixed():
+        if not item.is_fixed() and idx > 20:
             if curr_value is None:
                 continue
-            else:
-                report_fixed_line(items, idx_start, idx-1)
+            elif curr_value != item.get_lack():
+                report_group_line(items, idx_start, idx-1)
                 break
         elif curr_value != item.get_lack():
             if curr_value is not None:
-                report_fixed_line(items, idx_start, idx-1)
+                report_group_line(items, idx_start, idx-1)
             idx_start = idx
             curr_value = item.get_lack()
     print()
@@ -321,7 +320,7 @@ def main():
 
     pretty_print(counters, times)
     print()
-    show_stopper(alternatives, counters)
+    # show_stopper(alternatives, counters)
 
 
 
