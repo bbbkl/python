@@ -225,16 +225,43 @@ def get_csv_files(csv_files):
         return glob(csv_files[0] + "/*.csv")
     return csv_files
 
+def get_predecessors(items, idx_from, idx_to):
+    proc2values = {}
+    for item in items[:idx_from]:
+        val = item.get_lack()
+        id_proc = item.get_proc_id()
+        proc2values.setdefault(id_proc, set())
+        proc2values[id_proc].add(val)
+    predecessors = set()
+    for item in items[idx_from : idx_to+1]:
+        id_proc = item.get_proc_id()
+        if id_proc in proc2values:
+            predecessors.update(proc2values[id_proc])
+    predecessors.discard(items[idx_from].get_lack())
+    return predecessors
+
+def list_to_string(items):
+    res = ''
+    if len(items)>0:
+        res = '('
+        for item in items:
+            res += item + ','
+        res = res[:-1] + ')'
+    return res
+
 def report_group_line(items, idx_from, idx_to):
     item1 = items[idx_from]
     item2 = items[idx_to]
     tp_start = item1.get_start().strftime('%d.%m. %H:%M')
     tp_end = item2.get_start().strftime('%d.%m. %H:%M')
     cnt_fixed = sum(map(lambda x: x.is_fixed(), items[idx_from:idx_to+1]))
-    print("{} - {} {:20} #{:<3} ({} fix)".format(tp_start, tp_end, item1.get_lack(), idx_to - idx_from + 1, cnt_fixed))
+    extra_info = '(%d fix)' % cnt_fixed if cnt_fixed > 0 else ''
+    predecessors = get_predecessors(items, idx_from, idx_to)
+    pred_info = list_to_string(predecessors)
+    print("{} - {} {:20} #{:<3} {} {}".format(tp_start, tp_end, item1.get_lack(), idx_to - idx_from + 1, extra_info, pred_info))
 
 
-def report_fixed_start(setup_res):
+def report_fixed_start(setup_res, stop_after_fixed=True):
     """"report day + res and condensed sequence of fixed values"""
     headline = setup_res.get_res()
     hit = re.search(r'pirlo_2022(\d{2})(\d{2})', setup_res.get_path_name())
@@ -245,17 +272,17 @@ def report_fixed_start(setup_res):
     curr_value = None
     items = setup_res.get_items()
     for idx, item in enumerate(items):
-        if not item.is_fixed() and idx > 20:
-            if curr_value is None:
-                continue
-            elif curr_value != item.get_lack():
-                report_group_line(items, idx_start, idx-1)
-                break
-        elif curr_value != item.get_lack():
+        if curr_value != item.get_lack():
             if curr_value is not None:
-                report_group_line(items, idx_start, idx-1)
+                report_group_line(items, idx_start, idx - 1)
             idx_start = idx
             curr_value = item.get_lack()
+
+            if stop_after_fixed and idx > 20 and not item.is_fixed():
+                #pass
+                break
+
+    #report_group_line(items, idx_start, idx)
     print()
 
 def parse_arguments():
@@ -320,7 +347,7 @@ def main():
 
     pretty_print(counters, times)
     print()
-    # show_stopper(alternatives, counters)
+    show_stopper(alternatives, counters)
 
 
 
