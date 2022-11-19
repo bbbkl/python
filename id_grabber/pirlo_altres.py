@@ -217,7 +217,7 @@ def is_multi_res_stopper(stopper_items):
     return False
 
 
-def show_stopper(alternatives, counters):
+def show_stopper(alternatives, counters, freq):
     items = []
     for alt in alternatives:
         items.extend(alt.get_items())
@@ -242,9 +242,8 @@ def show_stopper(alternatives, counters):
         for idx, item in tuples:
             if prev_item and prev_item.get_lack() == item.get_lack() and prev_item.get_tr() != item.get_tr():
                 continue
-            cnt = cnt_all[item.get_lack()]
-            print("{:4d} {:20} cnt={:<4d} {:10} {}".format(
-                idx, item.get_lack(), cnt, item.get_res(), item.get_fullact_info()))
+            print("{:4d} {:20} {:10} {}".format(
+                idx, item.get_lack() + freq.suffix(item.get_lack()), item.get_res(), item.get_fullact_info()))
             prev_item = item
         print()
 
@@ -420,7 +419,7 @@ def main():
 
     pretty_print(counters, times, frequency)
     print()
-    # show_stopper(alternatives, counters)
+    show_stopper(alternatives, counters, frequency)
 
 
 if __name__ == "__main__":
