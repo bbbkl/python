@@ -20,6 +20,48 @@ def get_datetime(tp_as_string):
     return datetime.strptime(tp_as_string, '%Y-%m-%d %H:%M:%S')
 
 
+class Frequency:
+    def __init__(self, res2counter, times):
+        self.cnt_all = Counter()
+        for cnt in res2counter.values():
+            self.cnt_all.update(cnt)
+        self.times = times
+
+    def suffix(self, key):
+        pct = self.pct_cnt(key)
+        if pct > 5: return ''
+        if pct > 1: return '*'
+        return '**'
+
+    def total_cnt(self):
+        return sum(self.cnt_all.values())
+    def total_tr(self):
+        """total tr in minutes"""
+        return sum(map(lambda x: self.times[x]['tr'], self.times))
+    def total_te(self):
+        """total te in minutes"""
+        return sum(map(lambda x: self.times[x]['te'], self.times))
+
+    def pct_cnt(self, key):
+        return 100 * self.cnt_all[key] / self.total_cnt()
+
+    def pct_tr(self, key):
+        return 100 * self.times[key]['tr'] / self.total_tr()
+
+    def pct_te(self, key):
+        return 100 * self.times[key]['te'] / self.total_tr()
+
+    def print_me(self):
+        print("Frequncy cnt=%d tr=%0.1f (min) te=%0.1f (min)" % (self.total_cnt(), self.total_tr(), self.total_te()))
+        for key in self.cnt_all.keys():
+            cnt = self.cnt_all[key]
+            cnt_pct = self.pct_cnt(key)
+            tr = self.times[key]['tr'] / 60
+            tr_pct = self.pct_tr(key)
+            te = self.times[key]['te'] / 60
+            te_pct = self.pct_te(key)
+            print("%s cnt=%d (%.1f %%) tr=%.1f (%.1f %%) tr=%.1f (%.1f %%)" % (key, cnt, cnt_pct, tr, tr_pct, te, te_pct))
+
 class SetupRes:
     def __init__(self, full_path_name):
         self.path_name = full_path_name
@@ -212,22 +254,23 @@ def parse_header(line):
     return tokens[:-3]
 
 
-def print_key(key, counters, tr, te):
+def print_key(key, counters, tr, te, freq):
     res = ''
     for cnt in counters:
         res += "{:6}\t".format(cnt[key] if key in cnt else 0)
-    print('{} {:20} tr={:<5.1f} te={:<5.1f}'.format(res, key, (tr / 60), (te / 60)))
+    line = '{} {:20} tr={:<5.1f} te={:<5.1f}'.format(res, key + freq.suffix(key), (tr / 60), (te / 60))
+    line += '  pct(cnt %.1f, tr %.1f, tr %.1f)' % (freq.pct_cnt(key), freq.pct_tr(key), freq.pct_te(key))
+    print(line)
 
 
-def pretty_print(res2counter, times):
+def pretty_print(res2counter, times, freq):
     cnt_all = Counter()
     for cnt in res2counter.values():
         cnt_all.update(cnt)
 
     print('\t'.join(res2counter.keys()))
     for key, cnt in cnt_all.most_common():
-        print_key(key, res2counter.values(), times[key]['tr'], times[key]['te'])
-
+        print_key(key, res2counter.values(), times[key]['tr'], times[key]['te'], freq)
 
 def get_csv_files(csv_files):
     if len(csv_files) == 1 and os.path.isdir(csv_files[0]):
@@ -298,6 +341,23 @@ def report_fixed_start(setup_res, stop_after_fixed=True):
     # report_group_line(items, idx_start, idx)
     print()
 
+def calculate_times(alternatives):
+    times = {}
+    for setup_res in alternatives:
+        for item in setup_res.get_items():
+            key = item.get_lack()
+            times.setdefault(key, {'te': 0, 'tr': 0})
+            times[key]['tr'] += item.get_tr()
+            times[key]['te'] += item.get_te()
+    return times
+
+def calculate_counters(alternatives):
+    counters = {}
+    for idx, alt in enumerate(alternatives):
+        res = alt.get_res()
+        items = alt.get_items()
+        counters[res] = Counter(map(lambda x: x.get_lack(), items))
+    return counters
 
 def parse_arguments():
     """parse arguments from command line"""
@@ -335,12 +395,11 @@ def main():
         setup_res.mark_successor_activities()
         alternatives.append(setup_res)
 
-    if args.fixed_start:
-        for alt in alternatives:
-            report_fixed_start(alt)
-        return 0
+    times = calculate_times(alternatives)
+    counters = calculate_counters(alternatives)
+    frequency = Frequency(counters, times)
 
-    counters = {}
+    """
     for idx, alt in enumerate(alternatives):
         res = alt.get_res()
         items = alt.get_items()
@@ -352,16 +411,14 @@ def main():
                 print("start=%s duration=%03d setup_type=%s is_tr=%s" % (
                     item.get_start(), item.get_duration(), item.get_lack(), item.is_tr()))
             print()
+    """
 
-    times = {}
-    for setup_res in alternatives:
-        for item in setup_res.get_items():
-            key = item.get_lack()
-            times.setdefault(key, {'te': 0, 'tr': 0})
-            times[key]['tr'] += item.get_tr()
-            times[key]['te'] += item.get_te()
+    if args.fixed_start:
+        for alt in alternatives:
+            report_fixed_start(alt)
+        return 0
 
-    pretty_print(counters, times)
+    pretty_print(counters, times, frequency)
     print()
     # show_stopper(alternatives, counters)
 
