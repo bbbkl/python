@@ -8,17 +8,17 @@
 import re
 from argparse import ArgumentParser
 import os.path
-import shutil
-from subprocess import run, PIPE
 from glob import glob
 from collections import Counter
 from datetime import datetime
 
 VERSION = '0.1'
 
+
 def get_datetime(tp_as_string):
     # format 2022-10-27 14:59:00
     return datetime.strptime(tp_as_string, '%Y-%m-%d %H:%M:%S')
+
 
 class SetupRes:
     def __init__(self, full_path_name):
@@ -44,7 +44,6 @@ class SetupRes:
 
     def mark_successor_activities(self):
         proc2idx = {}
-        last_found = -1
         for idx, item in enumerate(self.get_items()):
             proc_id = item.get_proc_id()
             proc2idx.setdefault(proc_id, idx)
@@ -69,6 +68,7 @@ class SetupRes:
                     items.append(SetupItem(tokens, self.col_lookup))
             return items
 
+
 class SetupItem:
     header_items = []
 
@@ -80,6 +80,7 @@ class SetupItem:
 
     def set_res(self, res):
         self.res = res
+
     def get_res(self):
         return self.res
 
@@ -110,7 +111,7 @@ class SetupItem:
             return -1
 
     def is_setup_act(self):
-        return self.get_tr()>0 and self.get_te() <= 0
+        return self.get_tr() > 0 and self.get_te() == 0
 
     def get_fullact_info(self):
         idx = self.get_idx('Activity_ID')
@@ -163,6 +164,7 @@ class SetupItem:
         idx = self.get_idx('Frozen')
         return self.tokens[idx] == '1'
 
+
 def is_multi_res_stopper(stopper_items):
     res = None
     for _, item in stopper_items:
@@ -171,6 +173,8 @@ def is_multi_res_stopper(stopper_items):
         if res != item.get_res():
             return True
     return False
+
+
 def show_stopper(alternatives, counters):
     items = []
     for alt in alternatives:
@@ -194,36 +198,42 @@ def show_stopper(alternatives, counters):
         tuples = proc2items[proc_id]
         tuples.sort(key=lambda x: x[1].get_start())
         for idx, item in tuples:
-            if prev_item and prev_item.get_lack() == item.get_lack() and prev_item.get_tr()!=item.get_tr():
+            if prev_item and prev_item.get_lack() == item.get_lack() and prev_item.get_tr() != item.get_tr():
                 continue
             cnt = cnt_all[item.get_lack()]
-            print("{:4d} {:20} cnt={:<4d} {:10} {}".format(idx, item.get_lack(), cnt, item.get_res(), item.get_fullact_info()))
+            print("{:4d} {:20} cnt={:<4d} {:10} {}".format(
+                idx, item.get_lack(), cnt, item.get_res(), item.get_fullact_info()))
             prev_item = item
         print()
+
 
 def parse_header(line):
     tokens = line.split(';')
     return tokens[:-3]
 
+
 def print_key(key, counters, tr, te):
     res = ''
     for cnt in counters:
         res += "{:6}\t".format(cnt[key] if key in cnt else 0)
-    print('{} {:20} tr={:<5.1f} te={:<5.1f}'.format(res, key, (tr / 60), (te / 60) ))
+    print('{} {:20} tr={:<5.1f} te={:<5.1f}'.format(res, key, (tr / 60), (te / 60)))
+
 
 def pretty_print(res2counter, times):
-    all = Counter()
+    cnt_all = Counter()
     for cnt in res2counter.values():
-        all.update(cnt)
+        cnt_all.update(cnt)
 
     print('\t'.join(res2counter.keys()))
-    for key, cnt in all.most_common():
+    for key, cnt in cnt_all.most_common():
         print_key(key, res2counter.values(), times[key]['tr'], times[key]['te'])
 
+
 def get_csv_files(csv_files):
-    if len(csv_files)==1 and os.path.isdir(csv_files[0]):
+    if len(csv_files) == 1 and os.path.isdir(csv_files[0]):
         return glob(csv_files[0] + "/*.csv")
     return csv_files
+
 
 def get_predecessors(items, idx_from, idx_to):
     proc2values = {}
@@ -233,21 +243,23 @@ def get_predecessors(items, idx_from, idx_to):
         proc2values.setdefault(id_proc, set())
         proc2values[id_proc].add(val)
     predecessors = set()
-    for item in items[idx_from : idx_to+1]:
+    for item in items[idx_from:idx_to+1]:
         id_proc = item.get_proc_id()
         if id_proc in proc2values:
             predecessors.update(proc2values[id_proc])
     predecessors.discard(items[idx_from].get_lack())
     return predecessors
 
+
 def list_to_string(items):
     res = ''
-    if len(items)>0:
+    if len(items) > 0:
         res = '('
         for item in items:
             res += item + ','
         res = res[:-1] + ')'
     return res
+
 
 def report_group_line(items, idx_from, idx_to):
     item1 = items[idx_from]
@@ -258,7 +270,8 @@ def report_group_line(items, idx_from, idx_to):
     extra_info = '(%d fix)' % cnt_fixed if cnt_fixed > 0 else ''
     predecessors = get_predecessors(items, idx_from, idx_to)
     pred_info = list_to_string(predecessors)
-    print("{} - {} {:20} #{:<3} {} {}".format(tp_start, tp_end, item1.get_lack(), idx_to - idx_from + 1, extra_info, pred_info))
+    print("{} - {} {:20} #{:<3} {} {}".format(
+        tp_start, tp_end, item1.get_lack(), idx_to - idx_from + 1, extra_info, pred_info))
 
 
 def report_fixed_start(setup_res, stop_after_fixed=True):
@@ -279,15 +292,16 @@ def report_fixed_start(setup_res, stop_after_fixed=True):
             curr_value = item.get_lack()
 
             if stop_after_fixed and idx > 20 and not item.is_fixed():
-                #pass
+                # pass
                 break
 
-    #report_group_line(items, idx_start, idx)
+    # report_group_line(items, idx_start, idx)
     print()
+
 
 def parse_arguments():
     """parse arguments from command line"""
-    #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
+    # usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('csv_files', nargs='+', help='setup csv files')
@@ -307,6 +321,7 @@ def parse_arguments():
                       help="search pattern within logfile")
     """
     return parser.parse_args()
+
 
 def main():
     """main function"""
@@ -334,27 +349,26 @@ def main():
         if 0:
             print("res=%s #items=%d" % (res, len(items)))
             for item in items:
-                print("start=%s duration=%03d setup_type=%s is_tr=%s" % (item.get_start(), item.get_duration(), item.get_lack(), item.is_tr()))
+                print("start=%s duration=%03d setup_type=%s is_tr=%s" % (
+                    item.get_start(), item.get_duration(), item.get_lack(), item.is_tr()))
             print()
 
     times = {}
     for setup_res in alternatives:
         for item in setup_res.get_items():
             key = item.get_lack()
-            times.setdefault(key, {'te' : 0, 'tr' : 0})
+            times.setdefault(key, {'te': 0, 'tr': 0})
             times[key]['tr'] += item.get_tr()
             times[key]['te'] += item.get_te()
 
     pretty_print(counters, times)
     print()
-    show_stopper(alternatives, counters)
-
-
+    # show_stopper(alternatives, counters)
 
 
 if __name__ == "__main__":
     try:
         main()
-    except:
+    except BaseException:
         print('Script failed')
         raise
