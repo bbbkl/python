@@ -293,17 +293,17 @@ def get_predecessors(items, idx_from, idx_to):
     return predecessors
 
 
-def list_to_string(items):
+def list_to_string(items, freq):
     res = ''
     if len(items) > 0:
         res = '('
         for item in items:
-            res += item + ','
+            res += item + freq.suffix(item) + ','
         res = res[:-1] + ')'
     return res
 
 
-def report_group_line(items, idx_from, idx_to):
+def report_group_line(items, idx_from, idx_to, freq):
     item1 = items[idx_from]
     item2 = items[idx_to]
     tp_start = item1.get_start().strftime('%d.%m. %H:%M')
@@ -311,12 +311,13 @@ def report_group_line(items, idx_from, idx_to):
     cnt_fixed = sum(map(lambda x: x.is_fixed(), items[idx_from:idx_to+1]))
     extra_info = '(%d fix)' % cnt_fixed if cnt_fixed > 0 else ''
     predecessors = get_predecessors(items, idx_from, idx_to)
-    pred_info = list_to_string(predecessors)
+    pred_info = list_to_string(predecessors, freq)
+    val = item1.get_lack() + freq.suffix(item1.get_lack())
     print("{} - {} {:20} #{:<3} {} {}".format(
-        tp_start, tp_end, item1.get_lack(), idx_to - idx_from + 1, extra_info, pred_info))
+        tp_start, tp_end, val, idx_to - idx_from + 1, extra_info, pred_info))
 
 
-def report_fixed_start(setup_res, stop_after_fixed=True):
+def report_fixed_start(setup_res, stop_after_fixed, freq):
     """"report day + res and condensed sequence of fixed values"""
     headline = setup_res.get_res()
     hit = re.search(r'pirlo_2022(\d{2})(\d{2})', setup_res.get_path_name())
@@ -329,7 +330,7 @@ def report_fixed_start(setup_res, stop_after_fixed=True):
     for idx, item in enumerate(items):
         if curr_value != item.get_lack():
             if curr_value is not None:
-                report_group_line(items, idx_start, idx - 1)
+                report_group_line(items, idx_start, idx - 1, freq)
             idx_start = idx
             curr_value = item.get_lack()
 
@@ -398,23 +399,10 @@ def main():
     counters = calculate_counters(alternatives)
     frequency = Frequency(counters, times)
 
-    """
-    for idx, alt in enumerate(alternatives):
-        res = alt.get_res()
-        items = alt.get_items()
-        counters[res] = Counter(map(lambda x: x.get_lack(), items))
-
-        if 0:
-            print("res=%s #items=%d" % (res, len(items)))
-            for item in items:
-                print("start=%s duration=%03d setup_type=%s is_tr=%s" % (
-                    item.get_start(), item.get_duration(), item.get_lack(), item.is_tr()))
-            print()
-    """
-
     if args.fixed_start:
         for alt in alternatives:
-            report_fixed_start(alt)
+            fixed_only = True
+            report_fixed_start(alt, fixed_only, frequency)
         return 0
 
     pretty_print(counters, times, frequency)
