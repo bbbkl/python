@@ -62,6 +62,12 @@ class Frequency:
             te_pct = self.pct_te(key)
             print("%s cnt=%d (%.1f %%) tr=%.1f (%.1f %%) tr=%.1f (%.1f %%)" % (key, cnt, cnt_pct, tr, tr_pct, te, te_pct))
 
+
+def get_res(csv_file):
+    name = os.path.basename(csv_file)
+    return name.split('.')[-3]
+
+
 class SetupRes:
     def __init__(self, full_path_name):
         self.path_name = full_path_name
@@ -70,16 +76,15 @@ class SetupRes:
         self.set_item_res()
 
     def set_item_res(self):
-        res = self.get_res()
+        res = get_res(self.get_path_name())
         for item in self.items:
             item.set_res(res)
 
+    def get_res(self):
+        return get_res(self.path_name)
+
     def get_path_name(self):
         return self.path_name
-
-    def get_res(self):
-        name = os.path.basename(self.path_name)
-        return name.split('.')[-3]
 
     def get_items(self):
         return self.items
@@ -271,10 +276,23 @@ def pretty_print(res2counter, times, freq):
     for key, cnt in cnt_all.most_common():
         print_key(key, res2counter.values(), times[key]['tr'], times[key]['te'], freq)
 
-def get_csv_files(csv_files):
+
+def get_csv_files(csv_files, res_filter):
     if len(csv_files) == 1 and os.path.isdir(csv_files[0]):
-        return glob(csv_files[0] + "/*.csv")
+        candidates = glob(csv_files[0] + "/*.csv")
+        if res_filter:
+            keys = res_filter.split(',')
+            candidates = filter(lambda x: get_res(x) in keys, candidates)
+        return candidates
     return csv_files
+
+
+def make_pairs(csv_files):
+    result = {}
+    for item in csv_files:
+        key = re.search(r'^[^_]+_(\d+)', os.path.basename(item)).group(1)
+        result.setdefault(key, []).append(item)
+    return result
 
 
 def get_predecessors(items, idx_from, idx_to):
@@ -359,12 +377,49 @@ def calculate_counters(alternatives):
         counters[res] = Counter(map(lambda x: x.get_lack(), items))
     return counters
 
+def show_distribution(csv_files):
+    day_files = make_pairs(csv_files)
+    for day in day_files:
+        alternatives = []
+        for fn in day_files[day]:
+            setup_res = SetupRes(fn)
+            setup_res.mark_successor_activities()
+            alternatives.append(setup_res)
+
+        times = calculate_times(alternatives)
+        counters = calculate_counters(alternatives)
+        frequency = Frequency(counters, times)
+
+        print(day)
+        pretty_print(counters, times, frequency)
+        print()
+        # show_stopper(alternatives, counters, frequency)
+        print()
+
+def show_sequences(csv_files):
+    alternatives = []
+    for fn in csv_files:
+        setup_res = SetupRes(fn)
+        setup_res.mark_successor_activities()
+        alternatives.append(setup_res)
+
+    times = calculate_times(alternatives)
+    counters = calculate_counters(alternatives)
+    frequency = Frequency(counters, times)
+
+    for alt in alternatives:
+       fixed_only = False
+       report_fixed_start(alt, fixed_only, frequency)
+
 def parse_arguments():
     """parse arguments from command line"""
     # usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('csv_files', nargs='+', help='setup csv files')
+    parser.add_argument('-r', '--res_filter', metavar='string',
+                        dest="res_filter", default='',
+                        help="filter given resources, expect main input to be a directory")
     parser.add_argument('-f', '--fixed_start', action="store_true",  # or stare_false
                         dest="fixed_start", default=False,  # negative store value
                         help="report fixed start values, start - end value #items")
@@ -382,33 +437,16 @@ def parse_arguments():
     """
     return parser.parse_args()
 
-
 def main():
     """main function"""
     args = parse_arguments()
 
-    csv_files = get_csv_files(args.csv_files)
-
-    alternatives = []
-    for idx, fn in enumerate(csv_files):
-        setup_res = SetupRes(fn)
-        setup_res.mark_successor_activities()
-        alternatives.append(setup_res)
-
-    times = calculate_times(alternatives)
-    counters = calculate_counters(alternatives)
-    frequency = Frequency(counters, times)
+    csv_files = get_csv_files(args.csv_files, args.res_filter)
 
     if args.fixed_start:
-        for alt in alternatives:
-            fixed_only = True
-            report_fixed_start(alt, fixed_only, frequency)
-        return 0
-
-    pretty_print(counters, times, frequency)
-    print()
-    show_stopper(alternatives, counters, frequency)
-
+        show_sequences(csv_files)
+    else:
+        show_distribution(csv_files)
 
 if __name__ == "__main__":
     try:
