@@ -263,7 +263,7 @@ def print_key(key, counters, tr, te, freq):
     for cnt in counters:
         res += "{:6}\t".format(cnt[key] if key in cnt else 0)
     line = '{} {:20} tr={:<5.1f} te={:<5.1f}'.format(res, key + freq.suffix(key), (tr / 60), (te / 60))
-    line += '  pct(cnt %.1f, tr %.1f, tr %.1f)' % (freq.pct_cnt(key), freq.pct_tr(key), freq.pct_te(key))
+    line += '  (cnt %.1f%%, tr %.1f%%, tr %.1f%%)' % (freq.pct_cnt(key), freq.pct_tr(key), freq.pct_te(key))
     print(line)
 
 
@@ -377,7 +377,7 @@ def calculate_counters(alternatives):
         counters[res] = Counter(map(lambda x: x.get_lack(), items))
     return counters
 
-def show_distribution(csv_files):
+def show_distribution(csv_files, short_version):
     day_files = make_pairs(csv_files)
     for day in day_files:
         alternatives = []
@@ -393,10 +393,11 @@ def show_distribution(csv_files):
         print(day)
         pretty_print(counters, times, frequency)
         print()
-        # show_stopper(alternatives, counters, frequency)
-        print()
+        if not short_version:
+            show_stopper(alternatives, counters, frequency)
+            print()
 
-def show_sequences(csv_files):
+def show_sequences(csv_files, out_filter, short_version):
     alternatives = []
     for fn in csv_files:
         setup_res = SetupRes(fn)
@@ -408,8 +409,8 @@ def show_sequences(csv_files):
     frequency = Frequency(counters, times)
 
     for alt in alternatives:
-       fixed_only = False
-       report_fixed_start(alt, fixed_only, frequency)
+        if len(out_filter)==0 or alt.get_res() in out_filter:
+            report_fixed_start(alt, short_version, frequency)
 
 def parse_arguments():
     """parse arguments from command line"""
@@ -420,10 +421,15 @@ def parse_arguments():
     parser.add_argument('-r', '--res_filter', metavar='string',
                         dest="res_filter", default='',
                         help="filter given resources, expect main input to be a directory")
+    parser.add_argument('-o', '--output_filter', metavar='string',
+                        dest="output_filter", default='',
+                        help="if non-empty, filter given resources in output")
     parser.add_argument('-f', '--fixed_start', action="store_true",  # or stare_false
                         dest="fixed_start", default=False,  # negative store value
                         help="report fixed start values, start - end value #items")
-
+    parser.add_argument('-s', '--short_version', action="store_true",  # or stare_false
+                        dest="short_version", default=False,  # negative store value
+                        help="report short version of fixed start values, start - end value #items")
     """
     parser.add_argument('-m', '--mat-id', metavar='string', # or stare_false
                       dest="id_mat", default='', # negative store value
@@ -444,9 +450,10 @@ def main():
     csv_files = get_csv_files(args.csv_files, args.res_filter)
 
     if args.fixed_start:
-        show_sequences(csv_files)
+        out_filter = args.output_filter.split(',') if args.output_filter else []
+        show_sequences(csv_files, out_filter, args.short_version)
     else:
-        show_distribution(csv_files)
+        show_distribution(csv_files, args.short_version)
 
 if __name__ == "__main__":
     try:
