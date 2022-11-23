@@ -412,6 +412,96 @@ def show_sequences(csv_files, out_filter, short_version):
         if len(out_filter)==0 or alt.get_res() in out_filter:
             report_fixed_start(alt, short_version, frequency)
 
+def get_matrix_values(tokens):
+    res = set()
+    property_type = tokens[4]
+    if property_type == '2': # 2=assembly_part_feature
+        key = 'merkmalsleiste %s/%s' % (tokens[5], tokens[6])
+        res.add(tokens[7])
+        res.add(tokens[16])
+        return(key, res)
+    if property_type == '3': # 3=bomline_part
+        res.add(tokens[8])
+        res.add(tokens[17])
+        return('stueklistenzeile', res)
+    if property_type == '4': # 4=resource
+        if tokens[11] == '3': # 3=werkzeug
+            res.add(tokens[13])
+            res.add(tokens[21])
+            return('werkzeug', res)
+    if property_type == '5': # 5=operation_class
+        res.add(tokens[10])
+        res.add(tokens[19])
+        return ('aktivitaetenklasse', res)
+
+    print("xxx Uuups unknown property_type=%s" % property_type)
+    return (None, res)
+
+def report_matrix_values(msg_file):
+    with open(msg_file) as istream:
+        data = None
+        matrix2values = {}
+        for line in istream:
+            # 2	396	DEF_ERPCommandcreate_SetupMatrixEn
+            if line.find('2') == 0 and line.find('396') == 2 and data is not None:
+                tokens = data.split('\t')
+                matrix_id = tokens[1]
+                property_type, values = get_matrix_values(tokens)
+                if property_type:
+                    matrix2values.setdefault(matrix_id, {})
+                    matrix2values[matrix_id].setdefault(property_type, set()).update(values)
+            elif line.find(r'3') == 0:
+                data = line[:-1]
+        for mid in matrix2values:
+            print('\nmatrix=%s (%d)' % (mid, len(matrix2values[mid])))
+            for property_type in matrix2values[mid]:
+                print('\tproperty_type=%s' % property_type)
+                for idx, val in enumerate(sorted(matrix2values[mid][property_type])):
+                    print('\t\t% 3d "%s"' % (idx, val))
+                print()
+"""
+SetupMatrixEntry 
+	 1 setup_matrix_id               PC1_DRU
+	 2 setup_time                    100
+	 3 penalty points                0
+	 4 from_property_type            5 (operation_class)
+	 5 from_classification_system    
+	 6 from_feature                  
+	 7 from_specifictaion            
+	 8 from_part                     
+	 9 from_part_variant             
+	10 from_activity_class           2-D-2PRHODAMINEREDC
+	11 from_resource_type            0 (undefined)
+	12 from_resesource               
+	13 to_property_type              5 (operation_class)
+	14 to_classification_system      
+	15 to_feature                    
+	16 to_specifictaion              
+	17 to_part                       
+	18 to_part_variant               
+	19 to_activity_class             2-D-2PRHODAMINEREDC
+	20 to_resource_type              0 (undefined)
+	21 to_resource                   
+"""
+
+def report_setup_res(msg_file):
+    res2matrix = {}
+    with open(msg_file) as istream:
+        data = None
+        matrix2values = {}
+        for line in istream:
+            # 2	311	DEF_ERPCommandcreate_M_Ressource__
+            if line.find('2') == 0 and line.find('311') == 2 and data is not None:
+                tokens = data.split('\t')
+                matrix_id = tokens[20]
+                if matrix_id != '':
+                    res_id = "%s/%s" % (tokens[1], tokens[2])
+                    res2matrix[res_id] = matrix_id
+            elif line.find('3') == 0:
+                data = line[:-1]
+    for res, matrix_id in sorted(res2matrix.items()):
+        print('res=%s matrix=%s' % (res, matrix_id))
+
 def parse_arguments():
     """parse arguments from command line"""
     # usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -430,6 +520,9 @@ def parse_arguments():
     parser.add_argument('-s', '--short_version', action="store_true",  # or stare_false
                         dest="short_version", default=False,  # negative store value
                         help="report short version of fixed start values, start - end value #items")
+    parser.add_argument('-m', '--maxtrix_values', metavar='string',
+                        dest="matrix_values", default='',
+                        help="report setup matrix values for given messagefile")
     """
     parser.add_argument('-m', '--mat-id', metavar='string', # or stare_false
                       dest="id_mat", default='', # negative store value
@@ -448,6 +541,11 @@ def main():
     args = parse_arguments()
 
     csv_files = get_csv_files(args.csv_files, args.res_filter)
+
+    if args.matrix_values:
+        report_setup_res(args.matrix_values)
+        report_matrix_values(args.matrix_values)
+        return 0
 
     if args.fixed_start:
         out_filter = args.output_filter.split(',') if args.output_filter else []
