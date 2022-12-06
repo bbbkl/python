@@ -32,13 +32,28 @@ def get_target_dir(current_dir, old_basedir, name_new_basedir):
     target_dir = current_dir.replace(old_basedir, new_basedir)
     return target_dir
 
+def take_this(filename):
+    """do not copy certain files as new reference"""
+    skip_keys = ['assignment.txt', 'demand_proxies.csv', 'schedInfo.csv', 'collectorexport.xml']
+    for key in skip_keys:
+        if filename.find(key) != -1:
+            return False
+    return True
+
+def get_reference_name(filename):
+    """most target filename should contain reference within their name"""
+    if filename.find('pegging.csv') != -1:
+        return filename.replace('pegging.csv', 'pegging.reference.csv')
+    return filename.replace('result', 'reference')
+
 def copyfiles(filenames, src_dir, dst_dir):
     """copy filenames from src_dir to dst_dir, change result to reference in names"""
     for name in filenames:
-        src = os.path.join(src_dir, name)
-        dst_name = name.replace("result", "reference")
-        dst = os.path.join(dst_dir, dst_name)
-        shutil.copyfile(src, dst)
+        if take_this(name):
+            src = os.path.join(src_dir, name)
+            dst_name = get_reference_name(name)
+            dst = os.path.join(dst_dir, dst_name)
+            shutil.copyfile(src, dst)
 
 def handle_compare_dir(filenames, path, base_dir, new_refname, take_reference_files):
     """copy special files to new reference dir"""
