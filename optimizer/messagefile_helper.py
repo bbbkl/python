@@ -179,6 +179,7 @@ def pretty_print_config(config_entries):
     for entry in filter(lambda x: not x.is_relevant(), entries):
         print("\t%s" % entry)
 
+
 def checkopt_line(line):
     if line.find('120') != -1 or line.find('196') != -1:
         hit = re.search('^2\t(120|196)($|\t)', line)
@@ -243,6 +244,8 @@ def is_num_only_line(line):
 
 def write_compact_file(src_path, dst_path):
     first_line = 1
+    last_4 = None
+    rgx_4 = re.compile(r'^4\t(\d+)')
     rgx_stop = re.compile(r'^4\t-')
     with open("%s" % src_path) as openfile:
         with open(dst_path, "w") as copyfile:
@@ -252,26 +255,34 @@ def write_compact_file(src_path, dst_path):
                     if is_num_only_line(line):
                         continue
                 copyfile.write(line)
-                if len(line) > 0 and line[0] == '4' and rgx_stop.search(line):
-                    break
+                if len(line) > 0 and line[0] == '4':
+                    if rgx_stop.search(line):
+                        break
+                    hit = rgx_4.search(line)
+                    if hit:
+                        last_4 = int(hit.group(1))
+            # repair opti end and ensure command 130
+            if line and line.find('2\t120') != -1:
+                copyfile.write('2\t130\n')
+                if last_4 is not None:
+                    copyfile.write('4\t-%d\n' % (last_4+1))
+                print("repaired end of opti")
 
 
-def write_compact_file_batch(src_path, prefix, longdate):
-    for fn in glob.glob(src_path + '/*.dat', recursive=False):
-        dst_path = get_destination_path(fn, prefix, longdate)
-        write_compact_file(fn, dst_path)
-        os.remove(fn)
-        print("handled %s" % fn)
+def cleanup(src, dst, dst_tmp):
+    """remove src, rename dst_tmp to dst"""
+    os.remove(src)
+    os.rename(dst_tmp, dst)
 
 
 def handle_file(src_path, prefix, longdate, inline):
     dst_path = get_destination_path(src_path, prefix, longdate)
-    write_compact_file(src_path, dst_path)
+    dst_tmp = dst_path + ".tmp"
+    write_compact_file(src_path, dst_tmp)
     if inline:
-        config_entries = get_configentries(dst_path)
-        inline_config(dst_path, config_entries)
-    if src_path != dst_path:
-        os.remove(src_path)
+        config_entries = get_configentries(dst_tmp)
+        inline_config(dst_tmp, config_entries)
+    cleanup(src_path, dst_path, dst_tmp)
     print("handled %s" % src_path)
 
 
@@ -306,7 +317,7 @@ def main():
         return 0
 
     # either bach mode or single file
-    files_to_handle = [src_path,]
+    files_to_handle = [src_path, ]
     if args.batch_mode:
         files_to_handle = glob.glob(src_path + '/*.dat', recursive=False)
 
