@@ -46,10 +46,13 @@ class Frequency:
         return 100 * self.cnt_all[key] / self.total_cnt()
 
     def pct_tr(self, key):
-        return 100 * self.times[key]['tr'] / self.total_tr()
+        base = self.total_tr()
+        if base == 0:
+            return 0
+        return 100 * self.times[key]['tr'] / base
 
     def pct_te(self, key):
-        return 100 * self.times[key]['te'] / self.total_tr()
+        return 100 * self.times[key]['te'] / self.total_te()
 
     def print_me(self):
         print("Frequncy cnt=%d tr=%0.1f (min) te=%0.1f (min)" % (self.total_cnt(), self.total_tr(), self.total_te()))
@@ -135,6 +138,7 @@ class SetupItem:
         self.stopper = True
 
     def is_stopper(self):
+        """a stopper appears on the same ressource more than once with different setup type"""
         return self.stopper
 
     def get_tokens(self):
@@ -239,7 +243,8 @@ def show_stopper(alternatives, counters, freq):
         proc2items[proc_id].append((idx, item))
         if item.is_stopper() and proc_id not in stopper_ids:
             stopper_ids.append(proc_id)
-    for proc_id in stopper_ids:
+    #for proc_id in stopper_ids:
+    for proc_id in proc2items.keys():
         # if not is_multi_res_stopper(proc2items[proc_id]): continue
         prev_item = None
         tuples = proc2items[proc_id]
@@ -247,8 +252,8 @@ def show_stopper(alternatives, counters, freq):
         for idx, item in tuples:
             if prev_item and prev_item.get_lack() == item.get_lack() and prev_item.get_tr() != item.get_tr():
                 continue
-            print("{:4d} {:20} {:10} {}".format(
-                idx, item.get_lack() + freq.suffix(item.get_lack()), item.get_res(), item.get_fullact_info()))
+            #print("{:4d} {:20} {:10} {}".format(idx, item.get_lack() + freq.suffix(item.get_lack()), item.get_res(), item.get_fullact_info()))
+            print("{:20} {:10} {}".format(item.get_lack() + freq.suffix(item.get_lack()), item.get_res(), item.get_fullact_info()))
             prev_item = item
         print()
 
@@ -263,7 +268,7 @@ def print_key(key, counters, tr, te, freq):
     for cnt in counters:
         res += "{:6}\t".format(cnt[key] if key in cnt else 0)
     line = '{} {:20} tr={:<5.1f} te={:<5.1f}'.format(res, key + freq.suffix(key), (tr / 60), (te / 60))
-    line += '  (cnt %.1f%%, tr %.1f%%, tr %.1f%%)' % (freq.pct_cnt(key), freq.pct_tr(key), freq.pct_te(key))
+    line += '  (cnt %.1f%%, tr %.1f%%, te %.1f%%)' % (freq.pct_cnt(key), freq.pct_tr(key), freq.pct_te(key))
     print(line)
 
 
@@ -272,14 +277,17 @@ def pretty_print(res2counter, times, freq):
     for cnt in res2counter.values():
         cnt_all.update(cnt)
 
-    print('\t'.join(res2counter.keys()))
+    key_line = ''
+    for key in res2counter.keys():
+        key_line += "{:>6}\t".format(key)
+    print(key_line)
     for key, cnt in cnt_all.most_common():
         print_key(key, res2counter.values(), times[key]['tr'], times[key]['te'], freq)
 
 
 def get_csv_files(csv_files, res_filter):
     if len(csv_files) == 1 and os.path.isdir(csv_files[0]):
-        candidates = glob(csv_files[0] + "/*.csv")
+        candidates = glob(csv_files[0] + "/*.setup_info.*.csv")
         if res_filter:
             keys = res_filter.split(',')
             candidates = filter(lambda x: get_res(x) in keys, candidates)
@@ -290,8 +298,12 @@ def get_csv_files(csv_files, res_filter):
 def make_pairs(csv_files):
     result = {}
     for item in csv_files:
-        key = re.search(r'^[^_]+_(\d+)', os.path.basename(item)).group(1)
-        result.setdefault(key, []).append(item)
+        try:
+            key = re.search(r'^[^_]+_(\d+)', os.path.basename(item)).group(1)
+            result.setdefault(key, []).append(item)
+        except AttributeError:
+            print("make_pairs, search key failed for '%s'" % item)
+            raise
     return result
 
 
