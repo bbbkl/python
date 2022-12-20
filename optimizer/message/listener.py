@@ -115,11 +115,16 @@ class ContTimePoint(BaseItem):
         """get activity id"""
         return self._tokens[0]
 
+    def date(self):
+        return self._tokens[5]
+
+    def time(self):
+        return self._tokens[6]
 
     def headline_ids(self):
         """get headline for explained mode"""
         #return "%s" % self._command.text()
-        return "%s %s %s" % (self.process_id(), self.partproc_id(), self.ident_akt())
+        return "%s %s %s %s %s" % (self.process_id(), self.partproc_id(), self.ident_akt(), self.date(), self.time())
 
     @classmethod
     def commands(cls):
