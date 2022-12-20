@@ -59,7 +59,7 @@ class RegressionMessagefile:
         return report
 
     def get_files_newer(self, timepoint):
-        candidates = glob(os.path.dirname(self.message_file) + "/*")
+        candidates = glob(os.path.dirname(self.message_file) + "/**/*", recursive=True)
         return [x for x in candidates if os.path.isfile(x) and os.stat(x).st_mtime >= timepoint]
 
     def get_basename(self):
@@ -130,10 +130,10 @@ class RegressionMessagefile:
         os.rename(src, dst)
 
     def get_csvfiles(self, message_file):
-        basename = os.path.basename(message_file)[:-4]
-        rgx = re.compile(r".*%s_\d{8}_\d{6}.*reference\.csv$" % basename)
-        base = message_file[:-4]
-        candidates = glob(base + "*reference.csv")
+        pfx = os.path.basename(message_file)[:-4]
+        rgx = re.compile(r".*%s_\d{8}_\d{6}.*reference\.csv$" % pfx)
+        base_dir = os.path.dirname(message_file)
+        candidates = glob(f"{base_dir}/**/{pfx}*reference.csv", recursive=True)
         for item in candidates:
             hit = rgx.search(item)
             if hit:

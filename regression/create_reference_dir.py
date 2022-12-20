@@ -10,6 +10,7 @@ import sys
 import os
 import shutil
 import datetime
+from glob import glob
 from argparse import ArgumentParser
 
 VERSION = '1.0'
@@ -23,6 +24,7 @@ def filter_files(filenames, take_reference_files):
         items = [x for x in items if x.find(pattern)==-1]
     return items
 
+
 def get_target_dir(current_dir, old_basedir, name_new_basedir):
     """get name of new reference directory, name_new_basedir might be just a name or a path"""
     new_basedir = name_new_basedir
@@ -32,19 +34,22 @@ def get_target_dir(current_dir, old_basedir, name_new_basedir):
     target_dir = current_dir.replace(old_basedir, new_basedir)
     return target_dir
 
+
 def take_this(filename):
     """do not copy certain files as new reference"""
-    skip_keys = ['assignment.txt', 'demand_proxies.csv', 'schedInfo.csv', 'collectorexport.xml']
+    skip_keys = ['assignment.txt', 'demand_proxies.csv', 'schedInfo.csv', 'collectorexport.xml', 'report.txt', 'stdout.txt']
     for key in skip_keys:
         if filename.find(key) != -1:
             return False
     return True
+
 
 def get_reference_name(filename):
     """most target filename should contain reference within their name"""
     if filename.find('pegging.csv') != -1:
         return filename.replace('pegging.csv', 'pegging.reference.csv')
     return filename.replace('result', 'reference')
+
 
 def copyfiles(filenames, src_dir, dst_dir):
     """copy filenames from src_dir to dst_dir, change result to reference in names"""
@@ -53,6 +58,8 @@ def copyfiles(filenames, src_dir, dst_dir):
             src = os.path.join(src_dir, name)
             dst_name = get_reference_name(name)
             dst = os.path.join(dst_dir, dst_name)
+            if not os.path.isdir(os.path.dirname(dst)):
+                os.makedirs(os.path.dirname(dst))
             shutil.copyfile(src, dst)
 
 def handle_compare_dir(filenames, path, base_dir, new_refname, take_reference_files):
@@ -66,11 +73,21 @@ def handle_compare_dir(filenames, path, base_dir, new_refname, take_reference_fi
     copyfiles(files_to_copy, path, target_dir)
 
 
+def expand_dat_files(base_dir, dat_files):
+    result = []
+    for dat_file in dat_files:
+        pfx = os.path.basename(dat_file)[:-4]
+        for item in glob(f"{base_dir}/*/{pfx}*"):
+            result.append(os.path.relpath(item, base_dir))
+    return result
+
+
 def create_reference(start_dir, new_refname, take_reference_files):
     """walk through directory, handle all dirs which contain a *.dat file"""
     for (path, dirs, files) in os.walk(start_dir):
         dat_files = [x for x in files if os.path.splitext(x)[1].lower()=='.dat']
         if dat_files:
+            files.extend(expand_dat_files(path, dat_files))
             handle_compare_dir(files, path, start_dir, new_refname, take_reference_files)
 
 def get_new_regression_dir(reference_dir):
