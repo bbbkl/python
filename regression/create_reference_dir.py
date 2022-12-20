@@ -37,7 +37,8 @@ def get_target_dir(current_dir, old_basedir, name_new_basedir):
 
 def take_this(filename):
     """do not copy certain files as new reference"""
-    skip_keys = ['assignment.txt', 'demand_proxies.csv', 'schedInfo.csv', 'collectorexport.xml', 'report.txt', 'stdout.txt']
+    skip_keys = ['assignment.txt', 'demand_proxies.csv', 'schedInfo.csv', 'collectorexport.xml', 'report.txt',
+                 'stdout.txt', '.sdxl']
     for key in skip_keys:
         if filename.find(key) != -1:
             return False
