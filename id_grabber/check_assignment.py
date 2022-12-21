@@ -48,6 +48,7 @@ class Proc:
         self._pos = -1
         self._is_past = False
         self._clusterhead = None
+        self._fixed = False
         self.parse(line)
         
         
@@ -61,6 +62,7 @@ class Proc:
             self._dict[key] = hit.group(idx+1) 
         self._pos = int(re.search(r"(\d+)", line).group(0))
         self._is_past = line[-2] == 'P'
+        self._fixed = line.find('fixed') != -1
     
     def padded_proc(self):
         proc = self.process()
@@ -76,9 +78,16 @@ class Proc:
         return val
     
     def __str__(self):
-        msg = "%s duedate=%s pos=%04d dpl=%s prio=%s age=%03d planned=%s pos1=%02d pos2=%02d q=%d %s" % \
-            (self.padded_proc(), self.duedate(), self.pos(), self.dpl(), self.prio(), self.age(), 
-             self.padded_tp_end(), self.pos1(), self.pos2(), self.quantity(), "P" if self._is_past else " ")
+        fixed_info = 'fix' if self.fixed() else '   '
+        if 1: # no pos2
+            msg = "%s duedate=%s pos=%04d dpl=%s prio=%s age=%03d planned=%s pos1=%02d %s q=%d %s" % \
+                  (self.padded_proc(), self.duedate(), self.pos(), self.dpl(), self.prio(), self.age(),
+                   self.padded_tp_end(), self.pos1(), fixed_info, self.quantity(), "P" if self._is_past else " ")
+        else:
+            msg = "%s duedate=%s pos=%04d dpl=%s prio=%s age=%03d planned=%s pos1=%02d pos2=%02d %s q=%d %s" % \
+                (self.padded_proc(), self.duedate(), self.pos(), self.dpl(), self.prio(), self.age(),
+                 self.padded_tp_end(), self.pos1(), self.pos2(),
+                 fixed_info, self.quantity(), "P" if self._is_past else " ")
         if self.cluster() != "" and self.cluster() != self.process()[4:]:
             msg += " cluster=%s" % self.cluster()
         return msg
@@ -106,6 +115,8 @@ class Proc:
         return int(float(val[pos+1:]))
     def prio(self): return self._dict['prio'][:4]
     def age(self): return int(self._dict['age'])
+    def fixed(self): return self._fixed and not self.is_demand_proxy()
+    def is_demand_proxy(self): return self.pos2() == -1
     def pos(self): return self._pos
     def tp_end(self): return self._tp_end 
     def pos1(self): return self._pos1 # duedate
@@ -223,6 +234,11 @@ def get_suffix(proc, prev_proc):
         if prev_proc is not None and (prev_proc.pos1()+1) != proc.pos1():
             return "xxx" # unexpected diff - why?
     return "" # everything is fine
+
+def get_suffix2(proc, prev_proc):
+    if proc.pos1() < prev_proc.pos1():
+        return "*"
+    return "" # everything is fine
     
 def add_planning_results(cluster, headproc_file):
     proc_dict = {}
@@ -247,29 +263,33 @@ def add_planning_results(cluster, headproc_file):
                 proc_dict[proc_short].add_end(tpe)
     
     for part, procs in cluster.items():
-        check_positions(procs)          
+        check_positions(procs)    
     
     for part, procs in sorted(cluster.items()):
         #for part, procs in cluster.items():
-        proxy_cluster = procs[0].pos2() == -1
+        proxy_cluster = 0 # procs[0].pos2() == -1
         if len(procs) > 1 and not proxy_cluster:
             print("same part, same quantity covers %s" % part)
-            print("sorted by due date")
-            prev_proc = procs[1]
-            # show cluster sorted by due date
-            for proc in procs:
-                sfx = get_suffix(proc, prev_proc)
-                print("%s %s" % (proc, sfx))
-                prev_proc = proc
+            if 0:
+                print("sorted by due date")
+                prev_proc = procs[1]
+                # show cluster sorted by due date
+                for proc in procs:
+                    sfx = get_suffix(proc, prev_proc)
+                    print("%s %s" % (proc, sfx))
+                    prev_proc = proc
                 
             if 1:
                 # show cluster sorted by planning date
                 procs.sort(key=lambda x: [x.pos2(), x.pos1()])
+                prev_proc = procs[0]
                 print("sorted by planning_end_timepoint")
                 for proc in procs:
-                    print(proc)
+                    sfx = get_suffix2(proc, prev_proc)
+                    print("%s %s" % (proc, sfx))
+                    prev_proc = proc
                 print()
-    
+                
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
