@@ -10,7 +10,7 @@ from argparse import ArgumentParser
 import os.path
 from glob import glob
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 
 VERSION = '0.1'
 
@@ -55,7 +55,7 @@ class Frequency:
         return 100 * self.times[key]['te'] / self.total_te()
 
     def print_me(self):
-        print("Frequncy cnt=%d tr=%0.1f (min) te=%0.1f (min)" % (self.total_cnt(), self.total_tr(), self.total_te()))
+        print("Frequency cnt=%d tr=%0.1f (min) te=%0.1f (min)" % (self.total_cnt(), self.total_tr(), self.total_te()))
         for key in self.cnt_all.keys():
             cnt = self.cnt_all[key]
             cnt_pct = self.pct_cnt(key)
@@ -77,6 +77,9 @@ class SetupRes:
         self.col_lookup = {}
         self.items = self.parse_file(full_path_name)
         self.set_item_res()
+
+    def get_timepoint_start(self):
+        return self.items[0].get_start()
 
     def set_item_res(self):
         res = get_res(self.get_path_name())
@@ -346,11 +349,45 @@ def report_group_line(items, idx_from, idx_to, freq):
     print("{} - {} {:20} #{:<3} {} {}".format(
         tp_start, tp_end, val, idx_to - idx_from + 1, extra_info, pred_info))
 
+def get_day_change_counts(setup_res):
+    result = []
+    items = setup_res.get_items()
+    day_cnt = 0
+    val_prev = None
+    day_prev = None
+    for item in items:
+        if val_prev is None:
+            val_prev = item.get_lack()
+            day_prev = item.get_end()
+            continue
+        if day_prev.day != item.get_start().day:
+            result.append((day_cnt, day_prev))
+            day_cnt = 0
+            day_prev = item.get_start()
+        if val_prev != item.get_lack():
+            day_cnt += 1
+            val_prev = item.get_lack()
+    result.append((day_cnt, day_prev))
+    return result
+
+def report_change_freq(setup_res):
+    steps = get_day_change_counts(setup_res)
+    cnt_all = 0
+    day_cnt = 0
+    print('change frequency res=%s' % setup_res.get_res())
+    for cnt, timepoint in steps:
+        if 0:
+            print(cnt, timepoint.strftime('%d.%m.%Y'))
+        else:
+            day_cnt += 1
+            cnt_all += cnt
+            print('avg=%0.1f #days=%03d day_change_cnt=%d %s' % (cnt_all/day_cnt, day_cnt, cnt, timepoint.strftime('%d.%m.%Y %a')))
 
 def report_fixed_start(setup_res, stop_after_fixed, freq):
     """"report day + res and condensed sequence of fixed values"""
     headline = setup_res.get_res()
-    hit = re.search(r'pirlo_2022(\d{2})(\d{2})', setup_res.get_path_name())
+    hit = re.search(r'pirlo_\d{4}(\d{2})(\d{2})', setup_res.get_path_name())
+    date_str = '%s.%s.' % (hit.group(2), hit.group(1))
     if hit:
         headline += " %s.%s." % (hit.group(2), hit.group(1))
     print(headline)
@@ -369,6 +406,8 @@ def report_fixed_start(setup_res, stop_after_fixed, freq):
                 break
 
     # report_group_line(items, idx_start, idx)
+    print()
+    report_change_freq(setup_res)
     print()
 
 def calculate_times(alternatives):
@@ -408,6 +447,40 @@ def show_distribution(csv_files, short_version):
         if not short_version:
             show_stopper(alternatives, counters, frequency)
             print()
+
+def report_transitions(csv_files):
+    day_files = make_pairs(csv_files)
+    for day in day_files:
+        alternatives = []
+        for fn in day_files[day]:
+            setup_res = SetupRes(fn)
+            alternatives.append(setup_res)
+
+        items = []
+        for alt in alternatives:
+            items.extend(alt.get_items())
+
+        proc2items = {}
+        for item in items:
+            proc_id = item.get_proc_id()
+            proc2items.setdefault(proc_id, [])
+            proc2items[proc_id].append(item)
+
+        counters = Counter()
+        for proc_id in proc2items.keys():
+            prev_val = None
+            items = proc2items[proc_id]
+            items.sort(key=lambda x: x.get_start())
+            for item in items:
+                val = item.get_lack()
+                if val != prev_val:
+                    transition = "{:23} {:23}".format(str(prev_val), val)
+                    counters[transition] += 1
+                    prev_val = val
+        print(day)
+        for key, cnt in counters.most_common():
+            print("{:3d} {}".format(cnt, key))
+        print()
 
 def show_sequences(csv_files, out_filter, short_version):
     alternatives = []
@@ -453,6 +526,7 @@ def report_matrix_values(msg_file):
     with open(msg_file) as istream:
         data = None
         matrix2values = {}
+        matrix2Percent = {}
         for line in istream:
             # 2	396	DEF_ERPCommandcreate_SetupMatrixEn
             if line.find('2') == 0 and line.find('396') == 2 and data is not None:
@@ -462,10 +536,15 @@ def report_matrix_values(msg_file):
                 if property_type:
                     matrix2values.setdefault(matrix_id, {})
                     matrix2values[matrix_id].setdefault(property_type, set()).update(values)
+                matrix2Percent.setdefault(matrix_id, set())
+                pct = tokens[2]
+                if pct:
+                    matrix2Percent[matrix_id].add(pct)
+
             elif line.find(r'3') == 0:
                 data = line[:-1]
         for mid in matrix2values:
-            print('\nmatrix=%s (%d)' % (mid, len(matrix2values[mid])))
+            print('\nmatrix=%s (%d) pct=%s' % (mid, len(matrix2values[mid]), matrix2Percent[mid]))
             for property_type in matrix2values[mid]:
                 print('\tproperty_type=%s' % property_type)
                 for idx, val in enumerate(sorted(matrix2values[mid][property_type])):
@@ -535,6 +614,9 @@ def parse_arguments():
     parser.add_argument('-m', '--maxtrix_values', metavar='string',
                         dest="matrix_values", default='',
                         help="report setup matrix values for given messagefile")
+    parser.add_argument('-t', '--transitions', action="store_true",  # or stare_false
+                        dest="show_transitions", default=False,  # negative store value
+                        help="report transitions")
     """
     parser.add_argument('-m', '--mat-id', metavar='string', # or stare_false
                       dest="id_mat", default='', # negative store value
@@ -553,6 +635,10 @@ def main():
     args = parse_arguments()
 
     csv_files = get_csv_files(args.csv_files, args.res_filter)
+
+    if args.show_transitions:
+        report_transitions(csv_files)
+        return 0
 
     if args.matrix_values:
         report_setup_res(args.matrix_values)
