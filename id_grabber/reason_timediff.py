@@ -22,11 +22,15 @@ class ReasonItem:
         self.delay = -1
         self.time_late = []
 
+    def get_id(self):
+        if self._id.find('Proxy'):
+            return get_demand_proxy_short_name(self._id)
+        return self._id
+
     def __str__(self):
         diff = minutes_2_timestr(self.get_diff())
-        #diff = self.get_diff()
         multiflag = '*' if self.get_multi_diff() < self.get_nonmulti_diff() else ' '
-        msg = "%-30s diff=%s%s   delay=%-13s %s" % (self._id, diff, multiflag, self.delay, str(self.time_late))
+        msg = "%-30s diff=%s%s   delay=%-13s %s" % (self.get_id(), diff, multiflag, self.delay, str(self.time_late))
         return msg
 
     def __cmp__(self, other):
@@ -90,6 +94,16 @@ def get_reason_type(line):
         return '_%s' % short_name[hit.group(1)]
     return '_NNN'
 
+def get_demand_proxy_short_name(long_version):
+    if long_version.find('SafetyStock') != -1:
+        mat = re.search(r'\|([^\|]*)', long_version).group(1)
+        return 'Proxy_SS/%s' % mat
+    if long_version.find('DemandProxy_fixed_mat') != -1:
+        mat = re.search(r'\|([^\|]*)', long_version).group(1)
+        pfx = long_version[:long_version.find('/')]
+        pfx = pfx.replace(' PPA', '').replace(' ', '/')
+        return "Proxy_FX/%s/%s" % (pfx, mat)
+    return long_version
 
 def get_reasons(reason_file):
     reasons = []
