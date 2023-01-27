@@ -25,7 +25,8 @@ class ReasonItem:
     def __str__(self):
         diff = minutes_2_timestr(self.get_diff())
         #diff = self.get_diff()
-        msg = "%-30s diff=%s   delay=%-13s %s" % (self._id, diff, self.delay, str(self.time_late))
+        multiflag = '*' if self.get_multi_diff() < self.get_nonmulti_diff() else ' '
+        msg = "%-30s diff=%s%s   delay=%-13s %s" % (self._id, diff, multiflag, self.delay, str(self.time_late))
         return msg
 
     def __cmp__(self, other):
@@ -38,15 +39,28 @@ class ReasonItem:
     def no_reason(self):
         return len(self.time_late) == 0
 
-    def get_diff(self):
+    def has_multi_reason(self):
+        multi_items = [x for x in self.time_late if x[-3:] in ('mmr', 'mrr')]
+        return len(multi_items) > 0
+
+    def get_multi_diff(self):
+        multi_items = [x for x in self.time_late if x[-3:] in ('mmr', 'mrr')]
+        multi_delay = max(timestr_2_minutes(x) for x in multi_items) if multi_items else 0
+        return timestr_2_minutes(self.delay) - multi_delay
+
+    def get_nonmulti_diff(self):
         stc_items = [x for x in self.time_late if x[-3:] == 'stc']
         tbd_items = [x for x in self.time_late if x[-3:] in ('tbd', 'pre')]
-        other_items = [x for x in self.time_late if x[-3:] not in ('stc', 'tbd', 'pre')]
+        # multi_items = [x for x in self.time_late if x[-3:] in ('mmr', 'mrr')]
+        other_items = [x for x in self.time_late if x[-3:] not in ('stc', 'tbd', 'pre', 'mmr', 'mrr')]
         stc_delay = max(timestr_2_minutes(x) for x in stc_items) if stc_items else 0
         tbd_delay = max(timestr_2_minutes(x) for x in tbd_items) if tbd_items else 0
         baseline_delay = stc_delay + tbd_delay
         other_delay = max(timestr_2_minutes(x) for x in other_items) if other_items else 0
         return timestr_2_minutes(self.delay) - baseline_delay - other_delay
+
+    def get_diff(self):
+        return min(self.get_nonmulti_diff(), self.get_multi_diff())
 
 def reformat_timestring(timestring):
     minutes = timestr_2_minutes(timestring)
@@ -69,8 +83,9 @@ def minutes_2_timestr(minutes_total):
 
 def get_reason_type(line):
     short_name = {'combi_matres' : 'cmr', 'combi_resres' : 'crr', 'structure' : 'stc',
-                  'timeBound' : 'tbd', 'resource' : 'res', 'material' : 'mat', 'precedence' : 'pre'}
-    hit = re.search(r'reason=(combi_matres|material|combi_resres|resource|structure|timeBound|precedence)', line)
+                  'timeBound' : 'tbd', 'resource' : 'res', 'material' : 'mat', 'precedence' : 'pre',
+                  'multi_resources' : 'mrr', 'multi_mat_resources' : 'mmr'}
+    hit = re.search(r'reason=(combi_matres|material|combi_resres|resource|structure|timeBound|precedence|multi_resources|multi_mat_resources)', line)
     if hit:
         return '_%s' % short_name[hit.group(1)]
     return '_NNN'
@@ -97,6 +112,14 @@ def get_reasons(reason_file):
             continue
         hit = rgx_timelate.search(line)
         if hit:
+            """
+            use_multi = 1
+            is_multi = line.find('multi')!=-1
+            if use_multi and not is_multi:
+                continue
+            if not use_multi and is_multi:
+                continue
+            """
             new_reason.add_timelate(hit.group(1) + get_reason_type(line))
     if new_reason is not None:
         reasons.append(new_reason)
@@ -106,7 +129,7 @@ def get_reasons(reason_file):
 def report_no_reasons(reasons, stream):
     items = []
     for item in reasons:
-        if item.get_diff() != 0 and item.no_reason():
+        if item.get_diff != 0 and item.no_reason():
             items.append(item)
     pct = 100.0 * len(items) / (max(1.0, len(reasons)))
     stream.write("#delayed_with_no_reason=%d (%0.1f%%) out of total %d\n"
@@ -119,10 +142,10 @@ def report_no_reasons(reasons, stream):
 def report_diffs(reasons, stream):
     zero_diff = False
     for item in reasons:
-        if not zero_diff and item.get_diff() == 0:
+        if not zero_diff and item.get_diff == 0:
             zero_diff = True
             stream.write(100 * '-' + '\n')
-        elif zero_diff and item.get_diff() != 0:
+        elif zero_diff and item.get_diff != 0:
             zero_diff = False
             stream.write(100 * '-' + '\n')
         stream.write("%s\n" % item)
