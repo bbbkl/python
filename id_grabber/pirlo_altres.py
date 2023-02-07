@@ -564,14 +564,14 @@ def report_matrix_values(msg_file):
                     matrix2values.setdefault(matrix_id, {})
                     matrix2values[matrix_id].setdefault(property_type, set()).update(values)
                 matrix2Percent.setdefault(matrix_id, set())
-                pct = tokens[2]
+                pct = int(tokens[2])
                 if pct:
                     matrix2Percent[matrix_id].add(pct)
 
             elif line.find(r'3') == 0:
                 data = line[:-1]
         for mid in matrix2values:
-            print('\nmatrix=%s (%d) pct=%s' % (mid, len(matrix2values[mid]), matrix2Percent[mid]))
+            print('\nmatrix=%s (%d) pct=%s' % (mid, len(matrix2values[mid]), sorted(matrix2Percent[mid])))
             for property_type in matrix2values[mid]:
                 print('\tproperty_type=%s' % property_type)
                 for idx, val in enumerate(sorted(matrix2values[mid][property_type])):
@@ -614,11 +614,12 @@ def report_setup_res(msg_file):
                 matrix_id = tokens[20]
                 if matrix_id != '':
                     res_id = "%s/%s" % (tokens[1], tokens[2])
-                    res2matrix[res_id] = matrix_id
+                    res2matrix.setdefault(res_id, set())
+                    res2matrix[res_id].add(matrix_id)
             elif line.find('3') == 0:
                 data = line[:-1]
-    for res, matrix_id in sorted(res2matrix.items()):
-        print('res=%s matrix=%s' % (res, matrix_id))
+    for res, matrix_ids in sorted(res2matrix.items()):
+        print('res=%s matrix=%s' % (res, ', '.join(matrix_ids)))
 
 def show_header_infos(csv_files):
     for fn in csv_files:
