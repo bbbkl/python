@@ -78,6 +78,25 @@ class SetupRes:
         self.items = self.parse_file(full_path_name)
         self.set_item_res()
 
+    def get_num_activities(self):
+        tp = self.get_setup_horizon()
+        idx = 0
+        while idx < len(self.items) and self.items[idx].get_start() < tp:
+            idx = idx + 1
+        return idx+1
+
+    def get_work_don_horizon(self):
+        item = self.items[self.get_num_activities()-1]
+        return(item.get_te_accumulated(), item.get_tr_accumulated())
+
+    def get_num_setuptypes(self):
+        idx = self.col_lookup['#Different_Setup_Types']
+        return int(self.items[0].get_tokens()[idx])
+
+    def get_setup_horizon(self):
+        idx = self.col_lookup['Setup_Horizon']
+        return get_datetime(self.items[0].get_tokens()[idx])
+
     def get_timepoint_start(self):
         return self.items[0].get_start()
 
@@ -149,6 +168,14 @@ class SetupItem:
 
     def get_idx(self, key):
         return self.col_lookup[key]
+
+    def get_tr_accumulated(self):
+        idx = self.get_idx('Setup_Time_Acc')
+        return int(self.tokens[idx])
+
+    def get_te_accumulated(self):
+        idx = self.get_idx('Proc_Time_Acc')
+        return int(self.tokens[idx])
 
     def get_te(self):
         try:
@@ -263,7 +290,7 @@ def show_stopper(alternatives, counters, freq):
 
 def parse_header(line):
     tokens = line.split(';')
-    return tokens[:-3]
+    return tokens #[:-3]
 
 
 def print_key(key, counters, tr, te, freq):
@@ -593,6 +620,13 @@ def report_setup_res(msg_file):
     for res, matrix_id in sorted(res2matrix.items()):
         print('res=%s matrix=%s' % (res, matrix_id))
 
+def show_header_infos(csv_files):
+    for fn in csv_files:
+        setup_res = SetupRes(fn)
+        print(fn)
+        val_te, val_tr = setup_res.get_work_don_horizon()
+        print("\n#act=%d sum_tr=%d sum_te=%d #diff_vals=%d horizon=%s" % (setup_res.get_num_activities(), val_tr, val_te, setup_res.get_num_setuptypes(), setup_res.get_setup_horizon()))
+
 def parse_arguments():
     """parse arguments from command line"""
     # usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -635,6 +669,9 @@ def main():
     args = parse_arguments()
 
     csv_files = get_csv_files(args.csv_files, args.res_filter)
+
+    show_header_infos(csv_files)
+    return 0
 
     if args.show_transitions:
         report_transitions(csv_files)
