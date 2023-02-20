@@ -120,7 +120,7 @@ class RegressionLogfile:
         result = {}
         if os.path.exists(logfile):
             key_config_start = '- active config'
-            rgx_config_entry = re.compile(r'\s+\([^)]+\)\s+(\S+)=(\S+)')
+            rgx_config_entry = re.compile(r'\s+\([^)]+\)\s+(\S+)=(\S*)')
             in_config = False
             for line in open(logfile, encoding=self.get_encoding(logfile)):
                 if in_config:
@@ -341,7 +341,8 @@ def main():
     print(item)
     print("result=%s" % item.get_result())
     #print("avg ctp duration=%s msecs" % item.get_avg_ctp_msecs(args.reference_file))
-    print(item.create_report())
+    print(item.get_config_diff())
+    #print(item.create_report())
 
 if __name__ == "__main__":
     try:
