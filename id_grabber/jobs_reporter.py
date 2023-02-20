@@ -173,6 +173,7 @@ class PerformanceTrace:
             return val
         keys = ['updateProcessStructures',
                 'lUpdateProcessStructures',
+                #'ApsSchedulerCPO_emptySchedule::run',
                 'calculateMRPBasedTempStructures',
                 'sonic']
         for key in keys:
@@ -308,13 +309,14 @@ def performance_report(logfile, mode_52):
                        r'Decomposition\s+\|',
                        r'ApsModelerIlo\:\:createIlogModel',
                        r'ApsSchedulerCPO_optimalDemandTimes',
+                       r'ApsSchedulerCPOPlanning::run',
                        r'Sen[dt].*Solution to ERP',
                        r'DEF_APSCommandSetServerState______',
                        r'end syncronize',
                        r'[^C]Error',
                        r'sonic',
                        r'tardinessReasoning',
-                       r'ApsSchedulerCPO_emptySchedule',
+                       #r'ApsSchedulerCPO_emptySchedule',
                        r'elapsed milliseconds since last job start',
                        r'APS Scheduler\s+#proc',
                        r'retry=',
