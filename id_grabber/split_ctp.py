@@ -64,6 +64,7 @@ def split_ctp(filename, strip_1st=0):
     rgx_no_dataline = get_start_rgx_no_dataline()
     prev_start_idx = 0
     idx = -1
+    do_separate = False
     for line in open(filename, encoding=encoding_id):
         idx += 1
         hit = rgx.search(line)
