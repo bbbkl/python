@@ -269,7 +269,7 @@ def add_planning_results(cluster, headproc_file):
         #for part, procs in cluster.items():
         proxy_cluster = 0 # procs[0].pos2() == -1
         if len(procs) > 1 and not proxy_cluster:
-            print("same part, same quantity covers %s" % part)
+            print("same part, mixed quantity covers %s" % part)
             if 0:
                 print("sorted by due date")
                 prev_proc = procs[1]
