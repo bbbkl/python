@@ -138,6 +138,8 @@ class SetupRes:
                 tokens = line.split(';')
                 if len(tokens) and tokens[0]:
                     items.append(SetupItem(tokens, self.col_lookup))
+
+            # for item in items: print("lack=%s start=%s end=%s" % (item.get_lack(), item.get_start(), item.get_end()))
             return items
 
 
@@ -167,7 +169,11 @@ class SetupItem:
         return self.tokens
 
     def get_idx(self, key):
-        return self.col_lookup[key]
+        try:
+            return self.col_lookup[key]
+        except KeyError:
+            print("get_idx no such key=%s" % key)
+            return None
 
     def get_tr_accumulated(self):
         idx = self.get_idx('Setup_Time_Acc')
@@ -180,16 +186,20 @@ class SetupItem:
     def get_te(self):
         try:
             idx = self.get_idx('Proc_Time')
-            return int(self.tokens[idx])
+            if idx is not None:
+                return int(self.tokens[idx])
         except ValueError:
-            return -1
+            pass
+        return -1
 
     def get_tr(self):
         try:
             idx = self.get_idx('Setup_Time')
-            return int(self.tokens[idx])
+            if idx is not None:
+                return int(self.tokens[idx])
         except ValueError:
-            return -1
+            pass
+        return -1
 
     def is_setup_act(self):
         return self.get_tr() > 0 and self.get_te() == 0
@@ -329,7 +339,7 @@ def make_pairs(csv_files):
     result = {}
     for item in csv_files:
         try:
-            key = re.search(r'^[^_]+_(\d+)', os.path.basename(item)).group(1)
+            key = re.search(r'^[^_]+_(\d+_\d+)', os.path.basename(item)).group(1)
             result.setdefault(key, []).append(item)
         except AttributeError:
             print("make_pairs, search key failed for '%s'" % item)
@@ -413,7 +423,7 @@ def report_change_freq(setup_res):
 def report_fixed_start(setup_res, stop_after_fixed, freq):
     """"report day + res and condensed sequence of fixed values"""
     headline = setup_res.get_res()
-    hit = re.search(r'pirlo_\d{4}(\d{2})(\d{2})', setup_res.get_path_name())
+    hit = re.search(r'^[^_]+_\d{4}(\d{2})(\d{2})', os.path.basename(setup_res.get_path_name()))
     date_str = '%s.%s.' % (hit.group(2), hit.group(1))
     if hit:
         headline += " %s.%s." % (hit.group(2), hit.group(1))
@@ -626,7 +636,15 @@ def show_header_infos(csv_files):
         setup_res = SetupRes(fn)
         print(fn)
         val_te, val_tr = setup_res.get_work_don_horizon()
-        print("\n#act=%d sum_tr=%d sum_te=%d #diff_vals=%d horizon=%s" % (setup_res.get_num_activities(), val_tr, val_te, setup_res.get_num_setuptypes(), setup_res.get_setup_horizon()))
+        print("#act=%d sum_tr=%d sum_te=%d #diff_vals=%d horizon=%s\n" % (setup_res.get_num_activities(), val_tr, val_te, setup_res.get_num_setuptypes(), setup_res.get_setup_horizon()))
+
+def show_setup_quality(csv_files):
+    rgx = re.compile('setup_info.7.([^\.]+)')
+    pairs = make_pairs(csv_files)
+    for key in pairs:
+        print("\n\n%s %s %s" % (5 * "=", key, 25 * "="))
+        files = sorted(pairs[key], key=lambda x: rgx.search(x).group(1))
+        show_header_infos(files)
 
 def parse_arguments():
     """parse arguments from command line"""
@@ -643,6 +661,9 @@ def parse_arguments():
     parser.add_argument('-f', '--fixed_start', action="store_true",  # or stare_false
                         dest="fixed_start", default=False,  # negative store value
                         help="report fixed start values, start - end value #items")
+    parser.add_argument('-q', '--quality', action="store_true",  # or stare_false
+                        dest="quality", default=False,  # negative store value
+                        help="compare setup quality")
     parser.add_argument('-s', '--short_version', action="store_true",  # or stare_false
                         dest="short_version", default=False,  # negative store value
                         help="report short version of fixed start values, start - end value #items")
@@ -671,8 +692,9 @@ def main():
 
     csv_files = get_csv_files(args.csv_files, args.res_filter)
 
-    show_header_infos(csv_files)
-    return 0
+    if args.quality:
+        show_setup_quality(csv_files)
+        return 0
 
     if args.show_transitions:
         report_transitions(csv_files)
