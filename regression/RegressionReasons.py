@@ -259,6 +259,35 @@ def get_reason_identifier(line):
             return '/'.join(groups)
     return None
 
+def get_reasons_substat(reason_file):
+    stat = {}
+    
+    rgx_subreason = re.compile(r'reason=(\S+).* state=(\S+)')
+    rgx_reason_head = re.compile(r'^(Cluster|PartProcess)=')
+    is_active = False
+    for line in open(reason_file, encoding=RegressionUtil.test_encoding(reason_file)):
+        hit = rgx_reason_head.search(line)
+        if hit:
+            is_active = hit.group(1) == 'Cluster'
+        if not is_active:
+            continue
+        hit = rgx_subreason.search(line)
+        if hit:
+            reason_type, status = hit.groups()
+            stat.setdefault(reason_type, {})
+            stat[reason_type].setdefault(status, 0)
+            stat[reason_type][status] += 1
+    for rtype in stat:
+        states = stat[rtype]
+        sum = 0
+        for state in states:
+            sum += states[state]
+        if len(states) == 1:
+            print("%s %d" % (rtype, sum))
+        else:
+            print("%s %d %s" % (rtype, sum, states))
+        
+
 def get_reasons(reason_file):
     try:
         reasons = ReasonSet(reason_file)
@@ -332,6 +361,9 @@ def parse_arguments():
 def main():
     """main function"""
     args = parse_arguments()
+    
+    get_reasons_substat(args.reference_file)
+    return
 
     item = RegressionReasons(args.reference_file)
     print(item)
