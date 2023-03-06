@@ -99,6 +99,32 @@ class Log(Enum):
 
     UNKNOWN = 999
 
+class Header(Enum):
+    HOST = 1
+    OPTI_VERSION = 2
+    MAX_USEFUL_THREADS = 3
+    REVISION_NUMBER = 4
+
+    UNKNOWN = 998
+
+def get_header_key_values():
+    return { \
+        "running on host" : Header.HOST,
+        "max\_useful\_threads" : Header.MAX_USEFUL_THREADS,
+        "proALPHA APS-Server version" : Header.OPTI_VERSION,
+        "Revision Number\:" : Header.REVISION_NUMBER,
+    }
+
+def get_general_info(line):
+    for key, val in get_header_key_values().items():
+        if re.search(key, line, re.IGNORECASE):
+          return val
+    return Log.UNKNOWN
+
+def get_rgx_header():
+    expression = '|'.join(get_header_key_values().keys())
+    return re.compile(r"(%s)" % expression, re.IGNORECASE)
+
 def get_category(line):
     categories = {r"ML_Artort with different stocks" : Log.DIFF_STOCKS,
                   r"Config-entry (.*) is defined as" : Log.CFG_CONFLICT,
@@ -199,6 +225,8 @@ def get_category(line):
 
 def parse_logfile(logfile):
     cat2line = {}
+    header2line = {}
+    rgx_header = get_rgx_header()
     idx = 0
     with open(logfile, "r") as stream:
         for line in stream:
@@ -208,14 +236,24 @@ def parse_logfile(logfile):
                 cat2line.setdefault(category, [])
                 cat2line[category].append(line)
                 if category == Log.UNKNOWN: print("%s, %s\n" % (line[:-1], logfile))
-    return cat2line
+            if rgx_header.search(line):
+                key = get_general_info(line)
+                header2line.setdefault(key, [])
+                header2line[key].append(line)
+
+    return cat2line, header2line
 
 def check_logs(logfiles):
     cat2line = {}
+    header2line = {}
     for fn in logfiles:
-        for cat, lines in parse_logfile(fn).items():
+        category_infos, header_infos = parse_logfile(fn)
+        for cat, lines in category_infos.items():
             cat2line.setdefault(cat, [])
             cat2line[cat].extend(lines)
+        for key, lines in header_infos.items():
+            header2line.setdefault(key, [])
+            header2line[key].extend(lines)
 
     """
     if Log.UNKNOWN in cat2line:
@@ -225,6 +263,9 @@ def check_logs(logfiles):
     print()
     for cat, lines in cat2line.items():
         print("#%s=%d" % (cat, len(lines)))
+    print()
+    for key, lines in header2line.items():
+        print("#%s=%d" % (key, len(lines)))
 
 def parse_arguments():
     """parse arguments from command line"""
