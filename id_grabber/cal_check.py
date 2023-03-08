@@ -73,16 +73,13 @@ class PoolRes():
                 return idx
         return -1
 
-def check_calendars(filename):
+def get_calendars(filename):
     # <calendar id="c104" name="2	123" type="DisRes">
-    rgx_cal = re.compile(r'<calendar\s+id="c(\d+)"\s+name="2\s+(\S+)"')
+    rgx_cal = re.compile(r'<calendar\s+id="c([^"]+)"\s+name="2\s+([^"]+)"')
     # <calElem start="2023-02-20T07:51" end="2023-02-20T14:15" units="100" />
     rgx_cal_elem = re.compile(r'<calElem\s(start=.*units="\d+")')
-    rgx_pool = re.compile(r'<altDisResSet id="([^"]*)"\s+name="([^"]*)"\s+disResIDs="([^"]*)"\s+priorities="([^"]*)"')
     calendars = []
     cal = None
-    cal_elems = []
-    pool_resources = []
     with open(filename, "r") as istream:
         for line in istream:
             hit = rgx_cal.search(line)
@@ -96,49 +93,54 @@ def check_calendars(filename):
                 else:
                     calendars.append(cal)
                     cal = None
+    return calendars
+
+
+def get_pools(filename):
+    rgx_pool = re.compile(r'<altDisResSet id="([^"]*)"\s+name="([^"]*)"\s+disResIDs="([^"]*)"\s+priorities="([^"]*)"')
+    pools = []
+    with open(filename, "r") as istream:
+        for line in istream:
             hit = rgx_pool.search(line)
             if hit:
                 id_val, name, members, prios = hit.groups()
                 members = members.strip().split(' ')
                 prios = prios.strip().split(' ')
-                pool_resources.append(PoolRes(id_val, name, members, prios))
+                pools.append(PoolRes(id_val, name, members, prios))
+    return pools
 
-    if 1:
-        equivalence_builder = {}
 
-        for idx1 in range(len(calendars)):
-            cal = calendars[idx1]
-            handled = False
-            for cal_other in equivalence_builder:
-                if cal.is_similar(cal_other):
-                    equivalence_builder[cal_other].append(cal)
-                    handled = True
-                    break
-            if not handled:
-                equivalence_builder[cal] = [cal]
+def build_equivalence_classes(calendars):
+    equivalence_builder = {}
 
-        equivalence_classes = []
-        for items in equivalence_builder.values():
-            equivalence_classes.append([cal.get_res() for cal in items])
+    for idx1 in range(len(calendars)):
+        cal = calendars[idx1]
+        handled = False
+        for cal_other in equivalence_builder:
+            if cal.is_similar(cal_other):
+                equivalence_builder[cal_other].append(cal)
+                handled = True
+                break
+        if not handled:
+            equivalence_builder[cal] = [cal]
 
-        for idx, items in enumerate(equivalence_classes):
-            print("c%d -> %s" % (idx, ','.join(items)))
-        print()
+    equivalence_classes = []
+    for items in equivalence_builder.values():
+        equivalence_classes.append([cal.get_res() for cal in items])
+    return equivalence_classes
 
-        PoolRes.set_equivalence_classes(equivalence_classes)
+def check_calendars(filename):
+    calendars = get_calendars(filename)
+    equivalence_classes = build_equivalence_classes(calendars)
 
-        if 0:
-            for items in equivalence_builder.values():
-                print("equivalent %d" % len(items))
-                for item in items:
-                    print(item)
-                print()
-                for elem in items[0].get_elems()[:10]:
-                    print(elem)
-                print()
+    pools = get_pools(filename)
+    PoolRes.set_equivalence_classes(equivalence_classes)
 
-        for item in pool_resources:
-            print(item)
+    for idx, items in enumerate(equivalence_classes):
+        print("c%d -> %s" % (idx, ','.join(items)))
+    print()
+    for item in pools:
+        print(item)
 
 def parse_arguments():
     """parse arguments from command line"""
@@ -147,17 +149,6 @@ def parse_arguments():
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('inputfile', metavar='inputfile', help='input collector export file')
 
-    """
-    parser.add_argument('-m', '--mat-id', metavar='string', # or stare_false
-                      dest="id_mat", default='', # negative store value
-                      help="material id to grep")
-    parser.add_argument('-c', '--count', metavar='N', type=int, # or stare_false
-                      dest="count", default=0, # negative store value
-                      help="count")
-    parser.add_argument('-p', '--pattern', metavar='string', # or stare_false
-                      dest="pattern", default='xxx', # negative store value
-                      help="search pattern within logfile")
-    """
     return parser.parse_args()
 
 def main():
