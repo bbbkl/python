@@ -60,7 +60,7 @@ class PoolRes():
         members = ""
         for idx, items in equiv.items():
             members += "  c%d#%d={%s}" % (idx, len(items), ' '.join(items))
-        return "pool id={} name={:21} {}".format(self._id, self._name, members)
+        return "pool id={} name={:22} {}".format(self._id, self._name, members)
 
     @classmethod
     def set_equivalence_classes(cls, equiv_classes):
@@ -75,7 +75,7 @@ class PoolRes():
 
 def get_calendars(filename):
     # <calendar id="c104" name="2	123" type="DisRes">
-    rgx_cal = re.compile(r'<calendar\s+id="c([^"]+)"\s+name="2\s+([^"]+)"')
+    rgx_cal = re.compile(r'<calendar\s+id="c(\d+)"\s+name="2\s+([^"]+)"')
     # <calElem start="2023-02-20T07:51" end="2023-02-20T14:15" units="100" />
     rgx_cal_elem = re.compile(r'<calElem\s(start=.*units="\d+")')
     calendars = []
