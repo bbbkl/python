@@ -58,7 +58,7 @@ class PoolRes():
             equiv.setdefault(class_id, [])
             equiv[class_id].append(id_res)
         members = ""
-        for idx, items in equiv.items():
+        for idx, items in sorted(equiv.items()):
             members += "  c%d#%d={%s}" % (idx, len(items), ' '.join(items))
         return "pool id={} name={:22} {}".format(self._id, self._name, members)
 
