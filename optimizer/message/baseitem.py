@@ -110,7 +110,7 @@ class BaseItem(object):
     @classmethod 
     def format_check(cls, tokens, descriptions):
         """check that a special field fits expected format"""
-        checks = {'process_area_orig' : '(""|[A-Z]{3})'}
+        checks = {'process_area' : '(""|[A-Z]{3})'}
         for key in checks:
             if key in descriptions:
                 pos = descriptions.index(key)

@@ -67,14 +67,14 @@ class TrProcess(BaseItem):
                 'is_head', 'free_quantity',
                 'last_opt_type', 'last_opt_target', 'last_opt_time', 'lot', 'use_due_date',
                 #'production_quantity_total',
-                'BG_ueber_Lager', 'process_area_orig', 'order_state']
+                'BG_ueber_Lager', 'process_area', 'order_state']
 
         return ['process_area_head', 'process', 'part_process', 'part', 'part_variant', 'cro',
                 'production_quantity', 'start_date', 'due_date', 'throughput_time_factor',
                 'priority', 'earlyness_factor', 'transport_%',
                 'matrix_%', 'waiting_time_%', 'mrp_area', 'is_head', 'free_quantity',
                 'last_opt_type', 'last_opt_target', 'last_opt_time', 'lot', 'use_due_date',
-                'production_quantity_total', 'BG_ueber_Lager', 'process_area_orig', 'order_state', 'creation_date',
+                'production_quantity_total', 'BG_ueber_Lager', 'process_area', 'order_state', 'creation_date',
                 'stability', 'age', 'preserve_dynamic_buffer', 'due_date_time', 'is_plant_order',
                 'is_started']
 
