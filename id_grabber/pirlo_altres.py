@@ -19,6 +19,9 @@ def get_datetime(tp_as_string):
     # format 2022-10-27 14:59:00
     return datetime.strptime(tp_as_string, '%Y-%m-%d %H:%M:%S')
 
+def get_timestamp_key(filename):
+    """return YYYYMMDD_HHMM"""
+    return re.search(r'^[^_]+_(\d+_\d+)', os.path.basename(filename)).group(1)
 
 class Frequency:
     def __init__(self, res2counter, times):
@@ -85,7 +88,7 @@ class SetupRes:
             idx = idx + 1
         return idx+1
 
-    def get_work_don_horizon(self):
+    def get_work_done_horizon(self):
         item = self.items[self.get_num_activities()-1]
         return(item.get_te_accumulated(), item.get_tr_accumulated())
 
@@ -94,6 +97,7 @@ class SetupRes:
         return int(self.items[0].get_tokens()[idx])
 
     def get_setup_horizon(self):
+        #return get_datetime('2023-03-24 00:00:00')
         idx = self.col_lookup['Setup_Horizon']
         return get_datetime(self.items[0].get_tokens()[idx])
 
@@ -324,10 +328,18 @@ def pretty_print(res2counter, times, freq):
     for key, cnt in cnt_all.most_common():
         print_key(key, res2counter.values(), times[key]['tr'], times[key]['te'], freq)
 
+def get_csv_pattern_suffix(only_reference, only_result):
+    if only_reference and only_result:
+        raise Exception("do use -ref or -res and not both together!")
+    if only_reference:
+        return "reference.csv"
+    if only_result:
+        return "result.csv"
+    return "csv"
 
-def get_csv_files(csv_files, res_filter):
+def get_csv_files(csv_files, res_filter, only_reference, only_result):
     if len(csv_files) == 1 and os.path.isdir(csv_files[0]):
-        candidates = glob(csv_files[0] + "/*.setup_info.*.csv")
+        candidates = glob(csv_files[0] + "/*.setup_info.*." + get_csv_pattern_suffix(only_reference, only_result))
         if res_filter:
             keys = res_filter.split(',')
             candidates = filter(lambda x: get_res(x) in keys, candidates)
@@ -339,7 +351,7 @@ def make_pairs(csv_files):
     result = {}
     for item in csv_files:
         try:
-            key = re.search(r'^[^_]+_(\d+_\d+)', os.path.basename(item)).group(1)
+            key = get_timestamp_key(item)
             result.setdefault(key, []).append(item)
         except AttributeError:
             print("make_pairs, search key failed for '%s'" % item)
@@ -411,7 +423,7 @@ def report_change_freq(setup_res):
     steps = get_day_change_counts(setup_res)
     cnt_all = 0
     day_cnt = 0
-    print('change frequency res=%s' % setup_res.get_res())
+    print('change frequency res=%s %s' % (setup_res.get_res(), get_timestamp_key(setup_res.get_path_name())))
     for cnt, timepoint in steps:
         if 0:
             print(cnt, timepoint.strftime('%d.%m.%Y'))
@@ -423,10 +435,7 @@ def report_change_freq(setup_res):
 def report_fixed_start(setup_res, stop_after_fixed, freq):
     """"report day + res and condensed sequence of fixed values"""
     headline = setup_res.get_res()
-    hit = re.search(r'^[^_]+_\d{4}(\d{2})(\d{2})', os.path.basename(setup_res.get_path_name()))
-    date_str = '%s.%s.' % (hit.group(2), hit.group(1))
-    if hit:
-        headline += " %s.%s." % (hit.group(2), hit.group(1))
+    headline += " %s" % (get_timestamp_key(setup_res.get_path_name()))
     print(headline)
     idx_start = -1
     curr_value = None
@@ -635,7 +644,7 @@ def show_header_infos(csv_files):
     for fn in csv_files:
         setup_res = SetupRes(fn)
         print(fn)
-        val_te, val_tr = setup_res.get_work_don_horizon()
+        val_te, val_tr = setup_res.get_work_done_horizon()
         print("#act=%d sum_tr=%d sum_te=%d #diff_vals=%d horizon=%s\n" % (setup_res.get_num_activities(), val_tr, val_te, setup_res.get_num_setuptypes(), setup_res.get_setup_horizon()))
 
 def show_setup_quality(csv_files):
@@ -664,6 +673,12 @@ def parse_arguments():
     parser.add_argument('-q', '--quality', action="store_true",  # or stare_false
                         dest="quality", default=False,  # negative store value
                         help="compare setup quality")
+    parser.add_argument('-ref', '--reference_only', action="store_true",  # or stare_false
+                        dest="reference_only", default=False,  # negative store value
+                        help="use only refence csv files")
+    parser.add_argument('-res', '--result_only', action="store_true",  # or stare_false
+                        dest="result_only", default=False,  # negative store value
+                        help="use only result csv files")
     parser.add_argument('-s', '--short_version', action="store_true",  # or stare_false
                         dest="short_version", default=False,  # negative store value
                         help="report short version of fixed start values, start - end value #items")
@@ -690,7 +705,7 @@ def main():
     """main function"""
     args = parse_arguments()
 
-    csv_files = get_csv_files(args.csv_files, args.res_filter)
+    csv_files = get_csv_files(args.csv_files, args.res_filter, args.reference_only, args.result_only)
 
     if args.quality:
         show_setup_quality(csv_files)

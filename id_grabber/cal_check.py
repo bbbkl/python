@@ -42,7 +42,7 @@ class Cal():
         for idx, item in enumerate(self._elems):
             if item in other_elems:
                 equal_cnt += 1
-        return equal_cnt > (0.75 * len(self._elems))
+        return equal_cnt >= (0.90 * len(self._elems))
 
 class PoolRes():
     def __init__(self, id_val, name, members, prios):
