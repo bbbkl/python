@@ -72,14 +72,12 @@ class PeggingItem:
     def get_tokens(self):
         return self.tokens
 
-    def get_idx(self, key):
-        try:
-            idx = self.col_lookup[key]
-            # if idx >= len(self.tokens): print("idx=%d key=%s tokens=%s" % (idx, key, self.tokens))
-            return idx
-        except KeyError:
-            #print("get_idx no such key=%s" % key)
-            return None
+    def get_idx(self, keys):
+        for key in keys.split(','):
+            if key in self.col_lookup:
+                return self.col_lookup[key]
+        print("get_idx no key (%s) in %s" % (keys, self.col_lookup.keys()))
+        return None
 
     def get_token(self, idx):
         return self.tokens[idx] if idx < len(self.tokens) else None
@@ -93,16 +91,12 @@ class PeggingItem:
         return self.tokens[idx]
 
     def get_prio(self):
-        idx = self.get_idx('priority_scheduling')
-        if idx is None:
-            idx = self.get_idx('prio')
+        idx = self.get_idx('priority_scheduling,prio')
         val = self.get_token(idx)
         return int(val) if val else 0
 
     def get_pos(self):
-        idx = self.get_idx('planning_position')
-        if idx is None:
-            idx = self.get_idx('pos')
+        idx = self.get_idx('planning_position,pos')
         val = self.get_token(idx)
         return int(val) if val else -1
 
@@ -153,9 +147,9 @@ def parse_header(line):
     return tokens #[:-3]
 
 def report_item(proc, items):
-    earlier = list(filter(lambda x: x.get_duedate() > proc.get_duedate() and (proc.get_date()-x.get_date()).days > 7, items))
+    earlier = list(filter(lambda x: x.get_duedate() > proc.get_duedate() and  (proc.get_date()-x.get_date()).days > 7, items))
     if len(earlier) > 0:
-        print("%s xxx" % proc)
+        print("%s xxx #=%d" % (proc, len(earlier)))
         for item in earlier:
             print("\t%s" % item)
         print()
@@ -166,6 +160,7 @@ def parse_arguments():
     parser = ArgumentParser()
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('pegging_csv', metavar='pegging_csv', help='pegging csv file')
+    parser.add_argument('-d', '--delay', metavar='N', type=int,  dest="threshold_delay", default=365, help="threshold delay")
     return parser.parse_args()
 
 def main():
@@ -176,7 +171,7 @@ def main():
     items = filter(lambda x: x.get_part() == 'K-80' and x.get_amount() > 0 and not x.is_fixed(), pegging.get_items())
     items = sorted(items, key=lambda x: x.get_pos())
     for idx, item in enumerate(items):
-        if item.is_delayed(31):
+        if item.is_delayed(args.threshold_delay):
             report_item(item, items[idx:])
 
 if __name__ == "__main__":
