@@ -8,8 +8,7 @@
 import re
 from argparse import ArgumentParser
 import os.path
-from glob import glob
-from collections import Counter
+import sys
 from datetime import datetime, timedelta
 
 VERSION = '0.1'
@@ -32,12 +31,17 @@ class Pegging:
         self.path_name = full_path_name
         self.col_lookup = {}
         self.items = self.parse_file(full_path_name)
+        self.proc_lookup = {}
+        self.init_proc_lookup()
 
     def get_path_name(self):
         return self.path_name
 
     def get_items(self):
         return self.items
+
+    def get_proc_items(self, procname):
+        return self.proc_lookup[procname] if procname in self.proc_lookup else []
 
     def parse_file(self, filename):
         items = []
@@ -52,6 +56,22 @@ class Pegging:
                     items.append(PeggingItem(tokens, self.col_lookup))
         return items
 
+    def init_proc_lookup(self):
+        for item in self.items:
+            if item.is_lag() or item.is_repl_time():
+                continue
+            proc = item.get_proc_id()
+            if proc:
+                self.proc_lookup.setdefault(proc, [])
+                self.proc_lookup[proc].append(item)
+
+    def get_consumed_mat(self, procname):
+        result = set()
+        for item in self.get_proc_items(procname):
+            if item.is_consumer():
+                val = item.get_material() + str(item.get_amount())
+                result.add(val)
+        return result
 
 class PeggingItem:
     header_items = []
@@ -85,6 +105,15 @@ class PeggingItem:
     def is_delayed(self, thr_days=3):
         diff = (self.get_date() - self.get_requested_date()).days
         return diff >= thr_days
+
+    def get_material(self, condensed_version=True):
+        idx = self.get_idx('material')
+        val = self.tokens[idx]
+        if len(val)>2 and val[:2]=='0|':
+            val = val[2:]
+        while val.find('||') != -1:
+            val = val.replace('||', '|')
+        return val
 
     def get_part(self):
         idx = self.get_idx('part')
@@ -121,9 +150,12 @@ class PeggingItem:
     def is_producer(self):
         self.get_amount() > 0 and not (self.is_lag() or self.is_repl_time())
 
+    def is_consumer(self):
+        return self.get_amount() < 0
+
     def get_proc_id(self):
         name = self.get_identifier()
-        pos = name.find(' generated act(forerun)')
+        pos = name.find(' ')
         return name[:pos]
 
     def get_duedate(self):
@@ -146,12 +178,22 @@ def parse_header(line):
     tokens = line.split(';')
     return tokens #[:-3]
 
-def report_item(proc, items):
-    earlier = list(filter(lambda x: x.get_duedate() > proc.get_duedate() and  (proc.get_date()-x.get_date()).days > 7, items))
-    if len(earlier) > 0:
-        print("%s xxx #=%d" % (proc, len(earlier)))
-        for item in earlier:
-            print("\t%s" % item)
+def report_item(pegging, proc, items):
+    earlier = filter(lambda x: x.get_duedate() > proc.get_duedate() and  (proc.get_date()-x.get_date()).days > 7, items)
+    consumed_mat = pegging.get_consumed_mat(proc.get_proc_id())
+    #equivalent = list(filter(lambda x: pegging.get_consumed_mat(x.get_proc_id())==consumed_mat, earlier))
+    equivalent = list(earlier)
+    if len(equivalent) > 0:
+        print("%s xxx #=%d #proc_items=%d" % (proc, len(equivalent), len(pegging.get_proc_items(proc))))
+        #print(consumed_mat)
+        for item in equivalent:
+            consumed_mat_item = pegging.get_consumed_mat(item.get_proc_id())
+            suffix = " XXX" if consumed_mat == consumed_mat_item else ""
+            print("\t%s%s" % (item, suffix))
+            if not suffix:
+                print("\t%s" % (consumed_mat - consumed_mat_item))
+                print("\t%s" % (consumed_mat_item - consumed_mat))
+            print()
         print()
 
 def parse_arguments():
@@ -172,7 +214,7 @@ def main():
     items = sorted(items, key=lambda x: x.get_pos())
     for idx, item in enumerate(items):
         if item.is_delayed(args.threshold_delay):
-            report_item(item, items[idx:])
+            report_item(pegging, item, items[idx:])
 
 if __name__ == "__main__":
     try:
