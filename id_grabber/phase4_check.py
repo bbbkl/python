@@ -30,8 +30,9 @@ class Pegging:
     def __init__(self, full_path_name):
         self.path_name = full_path_name
         self.col_lookup = {}
-        self.items = self.parse_file(full_path_name)
         self.proc_lookup = {}
+        self.reserved_mat = {}
+        self.items = self.parse_file(full_path_name)
         self.init_proc_lookup()
 
     def get_path_name(self):
@@ -50,11 +51,29 @@ class Pegging:
             header = parse_header(lines[0])
             for idx, col in enumerate(header):
                 self.col_lookup[col] = idx
+            idx_mat = self.col_lookup['material'] if 'material' in self.col_lookup else None
             for line in lines[1:]:
                 tokens = line.split(';')
                 if len(tokens) > 2 and tokens[0]:
+                    if idx_mat is not None:
+                        tokens[idx_mat] = self.preprocess_mat(tokens[idx_mat])
                     items.append(PeggingItem(tokens, self.col_lookup))
         return items
+
+    def preprocess_mat(self, mat):
+        if len(mat) > 2 and mat[:2] == '0|':
+            mat = mat[2:]
+        tokens = mat.split('|')
+        tokens = map(lambda x: self.truncate_reservation(x), tokens)
+        tokens = filter(lambda x: x, tokens)
+        return '|'.join(tokens)
+
+    def truncate_reservation(self, val):
+        if len(val) > 70:
+            if not val in self.reserved_mat:
+                self.reserved_mat[val] = "RESERVED_%03d" % (len(self.reserved_mat))
+            return self.reserved_mat[val]
+        return val
 
     def init_proc_lookup(self):
         for item in self.items:
@@ -69,7 +88,7 @@ class Pegging:
         result = set()
         for item in self.get_proc_items(procname):
             if item.is_consumer():
-                val = item.get_material() + str(item.get_amount())
+                val = item.get_material() + '|' + str(item.get_amount())
                 result.add(val)
         return result
 
@@ -107,13 +126,7 @@ class PeggingItem:
         return diff >= thr_days
 
     def get_material(self, condensed_version=True):
-        idx = self.get_idx('material')
-        val = self.tokens[idx]
-        if len(val)>2 and val[:2]=='0|':
-            val = val[2:]
-        while val.find('||') != -1:
-            val = val.replace('||', '|')
-        return val
+        return self.tokens[self.get_idx('material')]
 
     def get_part(self):
         idx = self.get_idx('part')
@@ -184,15 +197,17 @@ def report_item(pegging, proc, items):
     #equivalent = list(filter(lambda x: pegging.get_consumed_mat(x.get_proc_id())==consumed_mat, earlier))
     equivalent = list(earlier)
     if len(equivalent) > 0:
-        print("%s xxx #=%d #proc_items=%d" % (proc, len(equivalent), len(pegging.get_proc_items(proc))))
+        print("%s xxx #=%d" % (proc, len(equivalent)))
         #print(consumed_mat)
         for item in equivalent:
             consumed_mat_item = pegging.get_consumed_mat(item.get_proc_id())
             suffix = " XXX" if consumed_mat == consumed_mat_item else ""
             print("\t%s%s" % (item, suffix))
             if not suffix:
-                print("\t%s" % (consumed_mat - consumed_mat_item))
-                print("\t%s" % (consumed_mat_item - consumed_mat))
+                mat1st_only = consumed_mat - consumed_mat_item
+                mat2nd_only = consumed_mat_item - consumed_mat
+                print("\t%s" % ', '.join(mat1st_only))
+                print("\t%s" % ', '.join(mat2nd_only))
             print()
         print()
 
