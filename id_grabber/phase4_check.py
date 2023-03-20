@@ -41,6 +41,9 @@ class Pegging:
     def get_items(self):
         return self.items
 
+    def get_dpl_items(self, dpl):
+        return filter(lambda x: x.get_dpl()==dpl and x.is_producer(), self.items)
+
     def get_proc_items(self, procname):
         return self.proc_lookup[procname] if procname in self.proc_lookup else []
 
@@ -101,7 +104,7 @@ class PeggingItem:
 
     def __str__(self):
         date = self.get_date().date()
-        req_date = self.get_requested_date().date()
+        req_date = self.get_requested_date().date() if self.get_requested_date() else None
         prio = self.get_prio()
         id = self.get_proc_id()
         pos = self.get_pos()
@@ -128,27 +131,26 @@ class PeggingItem:
     def get_material(self, condensed_version=True):
         return self.tokens[self.get_idx('material')]
 
+    def get_dpl(self):
+        idx = self.get_idx('dispo_level,dpl')
+        return int(self.tokens[idx]) if idx < len(self.tokens) else None
+
     def get_part(self):
-        idx = self.get_idx('part')
-        return self.tokens[idx]
+        return self.tokens[self.get_idx('part')]
 
     def get_prio(self):
-        idx = self.get_idx('priority_scheduling,prio')
-        val = self.get_token(idx)
-        return int(val) if val else 0
+        val = self.get_token(self.get_idx('priority_scheduling,prio'))
+        return float(val) if val else 0
 
     def get_pos(self):
-        idx = self.get_idx('planning_position,pos')
-        val = self.get_token(idx)
+        val = self.get_token(self.get_idx('planning_position,pos'))
         return int(val) if val else -1
 
     def get_amount(self):
-        idx = self.get_idx('amount')
-        return int(self.tokens[idx])
+        return int(self.tokens[self.get_idx('amount')])
 
     def get_identifier(self):
-        idx = self.get_idx('identifier')
-        return self.tokens[idx]
+        return self.tokens[self.get_idx('identifier')]
 
     def is_lag(self):
         return self.get_identifier().find('LAG') == 0
@@ -157,11 +159,10 @@ class PeggingItem:
         return self.get_identifier().find('ReplenishmentTime') == 0
 
     def is_fixed(self):
-        idx = self.get_idx('entry type')
-        return 'FixedERPActivity' == self.tokens[idx]
+        return 'FixedERPActivity' == self.tokens[self.get_idx('entry type')]
 
     def is_producer(self):
-        self.get_amount() > 0 and not (self.is_lag() or self.is_repl_time())
+        return self.get_amount() > 0 and not (self.is_lag() or self.is_repl_time())
 
     def is_consumer(self):
         return self.get_amount() < 0
@@ -172,18 +173,15 @@ class PeggingItem:
         return name[:pos]
 
     def get_duedate(self):
-        idx = self.get_idx('due_date')
-        tp = self.tokens[idx]
+        tp = self.tokens[self.get_idx('due_date')]
         return get_datetime(tp)
 
     def get_requested_date(self):
-        idx = self.get_idx('requested_date_internal')
-        val = self.get_token(idx)
-        return get_datetime(val) if val else None
+        tp = self.get_token(self.get_idx('requested_date_internal'))
+        return get_datetime(tp) if tp else None
 
     def get_date(self):
-        idx = self.get_idx('date')
-        tp = self.tokens[idx]
+        tp = self.tokens[self.get_idx('date')]
         return get_datetime(tp)
 
 
@@ -225,6 +223,14 @@ def main():
     args = parse_arguments()
 
     pegging = Pegging(args.pegging_csv)
+
+    diff_parts = set()
+    for item in pegging.get_dpl_items(0):
+        if item.get_part() not in diff_parts:
+            diff_parts.add(item.get_part())
+            print(item.get_part())
+    return 0
+
     items = filter(lambda x: x.get_part() == 'K-80' and x.get_amount() > 0 and not x.is_fixed(), pegging.get_items())
     items = sorted(items, key=lambda x: x.get_pos())
     for idx, item in enumerate(items):
