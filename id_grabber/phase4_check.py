@@ -109,7 +109,7 @@ class PeggingItem:
         id = self.get_proc_id()
         pos = self.get_pos()
         qty = self.get_amount()
-        return "date=%s req_date=%s prio=%d pos=%d q=%d proc=%s" % (date, req_date, prio, pos, qty, id)
+        return "date=%s req_date=%s prio=%.1f pos=%d q=%d proc=%s" % (date, req_date, prio, pos, qty, id)
 
     def get_tokens(self):
         return self.tokens
@@ -128,7 +128,7 @@ class PeggingItem:
         diff = (self.get_date() - self.get_requested_date()).days
         return diff >= thr_days
 
-    def get_material(self, condensed_version=True):
+    def get_material(self):
         return self.tokens[self.get_idx('material')]
 
     def get_dpl(self):
@@ -189,24 +189,76 @@ def parse_header(line):
     tokens = line.split(';')
     return tokens #[:-3]
 
-def report_item(pegging, proc, items):
+def report_item(pegging, proc, items, dominate_material):
     earlier = filter(lambda x: x.get_duedate() > proc.get_duedate() and  (proc.get_date()-x.get_date()).days > 7, items)
     consumed_mat = pegging.get_consumed_mat(proc.get_proc_id())
-    #equivalent = list(filter(lambda x: pegging.get_consumed_mat(x.get_proc_id())==consumed_mat, earlier))
+    if dominate_material:
+        earlier = list(filter(lambda x: pegging.get_consumed_mat(x.get_proc_id())>=consumed_mat, earlier))
     equivalent = list(earlier)
     if len(equivalent) > 0:
         print("%s xxx #=%d" % (proc, len(equivalent)))
         #print(consumed_mat)
         for item in equivalent:
             consumed_mat_item = pegging.get_consumed_mat(item.get_proc_id())
-            suffix = " XXX" if consumed_mat == consumed_mat_item else ""
+            suffix = " XXX" if consumed_mat <= consumed_mat_item else ""
             print("\t%s%s" % (item, suffix))
-            if not suffix:
+            if consumed_mat != consumed_mat_item:
                 mat1st_only = consumed_mat - consumed_mat_item
                 mat2nd_only = consumed_mat_item - consumed_mat
-                print("\t%s" % ', '.join(mat1st_only))
-                print("\t%s" % ', '.join(mat2nd_only))
+                print("\tref_only=%s" % ', '.join(mat1st_only))
+                print("\tcmp_only=%s" % ', '.join(mat2nd_only))
             print()
+        print()
+
+def detect_problems_material(pegging, material, threshold_delay, require_same_material=False):
+    items = filter(lambda x: not(x.is_lag() or x.is_repl_time() or x.is_fixed()), pegging.get_items())
+    items = filter(lambda x: x.get_part() == material and x.get_amount() > 0, items)
+    items = sorted(items, key=lambda x: x.get_pos())
+    for idx, item in enumerate(items):
+        if item.is_delayed(threshold_delay):
+            report_item(pegging, item, items[idx:], require_same_material)
+
+def report_one_proc(pegging, process):
+    proc_item = None
+    for item in pegging.get_proc_items(process):
+        if item.is_producer():
+            proc_item = item
+            break
+    if proc_item:
+        items = filter(lambda x: not (x.is_lag() or x.is_repl_time() or x.is_fixed()), pegging.get_items())
+        items = filter(lambda x: x.get_part() == proc_item.get_part() and x.get_amount() > 0, items)
+        items = sorted(items, key=lambda x: x.get_pos())
+        idx = items.index(proc_item)
+        report_item(pegging, proc_item, items[idx:], False)
+
+def get_material_to_check(pegging, mat_filter, dpl=0):
+    material_to_check = set()
+    if mat_filter:
+        for mat in mat_filter.split(','):
+            material_to_check.add(mat)
+    else:
+        for item in pegging.get_dpl_items(dpl):
+            if item.get_part() not in material_to_check:
+                material_to_check.add(item.get_part())
+    return material_to_check
+
+def detect_problems(pegging, threshold_delay, require_same_material, material_to_check):
+    for material in material_to_check:
+        print("%s %s %s" % (5*'#', material, 15*'#'))
+        detect_problems_material(pegging, material, threshold_delay, require_same_material)
+
+def show_process_info(pegging, processes):
+    procs = filter(lambda x: x.get_proc_id() in processes and x.is_producer(), pegging.get_items())
+    ref_mat = None
+    for proc in procs:
+        if ref_mat is None:
+            ref_mat = pegging.get_consumed_mat(proc.get_proc_id())
+        print(proc)
+        print("produces=%s" % proc.get_material())
+        proc_mat = pegging.get_consumed_mat(proc.get_proc_id())
+        if ref_mat != proc_mat:
+            print("ref_proc mat only=%s" % ', '.join(ref_mat - proc_mat))
+            print("cmp_proc mat only=%s" % ', '.join(proc_mat - ref_mat))
         print()
 
 def parse_arguments():
@@ -216,6 +268,13 @@ def parse_arguments():
     parser.add_argument('-v', '--version', action='version', version=VERSION)
     parser.add_argument('pegging_csv', metavar='pegging_csv', help='pegging csv file')
     parser.add_argument('-d', '--delay', metavar='N', type=int,  dest="threshold_delay", default=365, help="threshold delay")
+    parser.add_argument('-dm', '--dominate_material', action="store_true", dest="dominate_mat", default=False, help="dominate material filter")
+    parser.add_argument('-f', '--filter', metavar='N', type=str, dest="mat_filter", default="", help="threshold delay")
+    parser.add_argument('-pi', '--process_info', metavar='N', type=str, dest="process_info", default="", help="process info")
+    parser.add_argument('-rp', '--report_process', metavar='N', type=str, dest="report_process", default="", help="report process")
+
+
+
     return parser.parse_args()
 
 def main():
@@ -224,18 +283,18 @@ def main():
 
     pegging = Pegging(args.pegging_csv)
 
-    diff_parts = set()
-    for item in pegging.get_dpl_items(0):
-        if item.get_part() not in diff_parts:
-            diff_parts.add(item.get_part())
-            print(item.get_part())
-    return 0
+    if args.process_info:
+        show_process_info(pegging, args.process_info.split(','))
+        return 0
+    elif args.report_process:
+        report_one_proc(pegging, args.report_process)
+        return 0
 
-    items = filter(lambda x: x.get_part() == 'K-80' and x.get_amount() > 0 and not x.is_fixed(), pegging.get_items())
-    items = sorted(items, key=lambda x: x.get_pos())
-    for idx, item in enumerate(items):
-        if item.is_delayed(args.threshold_delay):
-            report_item(pegging, item, items[idx:])
+    material_to_check = get_material_to_check(pegging, args.mat_filter)
+    #detect_problems_material(pegging, 'K-80', args.threshold_delay, args.same_material)
+    detect_problems(pegging, args.threshold_delay, args.dominate_mat, material_to_check)
+
+
 
 if __name__ == "__main__":
     try:
