@@ -51,7 +51,11 @@ class TrProcess(BaseItem):
         return tokens
 
     def headline_ids(self):
-        return "%s %s %s" % (self.process_id(), self.partproc_id(), self.article())
+        tokens = self._tokens
+        msg = "%s %s %s" % (self.process_id(), self.partproc_id(), self.article())
+        if len(tokens) >= 34 and tokens[33] == '1':
+            msg += " is_started=1"
+        return msg
 
     @classmethod
     def commands(cls):

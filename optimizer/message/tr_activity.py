@@ -248,5 +248,5 @@ class TrActivity(BaseItem):
                 'Fertigungstyp', 'Fertig_gemeldet', 'cal', 'activity_class', 'partial_lot',
                 'total_lot_size', 'TR_total (deprecated with setup opt)', 'TE_total', 'continous_production',
                 'continous_demand', 'process_area', 'Pufferaktivitaet',
-                'setup_time_default', 'setup_time_actual', 'is_setup_activity', 
+                'setup_time_default', 'setup_time_done', 'is_setup_activity',
                 'duedate_date', 'duedate_time']

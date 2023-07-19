@@ -43,6 +43,10 @@ class M_UebAdresse(BaseItem):
             return int(self._tokens[pos])
         return 0
 
+    def headline_ids(self):
+        """get headline for explained mode"""
+        return "%s %s" % (self.von_adresse(), self.nach_adresse())
+
     def verbose_tokens(self):
         """possibility to enrich some cryptic values with their human readable description"""
         tokens = list(self._tokens)

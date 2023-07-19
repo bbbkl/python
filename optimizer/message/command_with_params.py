@@ -31,4 +31,4 @@ class Command_OptimizeCTP(BaseItem):
     def token_descriptions(self):
         if len(self._tokens) > 2:
             return ['optimization_type', 'preserve_dynamic_buffer' ]
-        return ['optimization_type',] # preserve buffer flag was workaround for global dynamic buffer flag
+        return ['optimization_type', 'deprecated_preserve_dynamic_buffer'] # preserve buffer flag was workaround for global dynamic buffer flag
