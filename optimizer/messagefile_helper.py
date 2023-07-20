@@ -272,6 +272,12 @@ def write_compact_file(src_path, dst_path):
 def cleanup(src, dst, dst_tmp):
     """remove src, rename dst_tmp to dst"""
     os.remove(src)
+    if os.path.exists(dst):
+        base = dst[:-4]
+        idx = 0
+        while os.path.exists(dst):
+            dst = "%s%02d%s" % (base, idx, dst[-4:])
+            idx += 1
     os.rename(dst_tmp, dst)
 
 
