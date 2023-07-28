@@ -16,8 +16,12 @@ VERSION = '0.1'
 
 
 def get_datetime(tp_as_string):
-    # format 2022-10-27 14:59:00
-    return datetime.strptime(tp_as_string, '%Y-%m-%d %H:%M:%S')
+    try:
+        # format 2022-10-27 14:59:00
+        return datetime.strptime(tp_as_string, '%Y-%m-%d %H:%M:%S')
+    except:
+        # format 20230508_0252
+        return datetime.strptime(tp_as_string, '%Y%m%d_%H%M')
 
 def get_timestamp_key(filename):
     """return YYYYMMDD_HHMM"""
@@ -568,16 +572,40 @@ def get_matrix_values(tokens):
     print("xxx Uuups unknown property_type=%s" % property_type)
     return (None, res)
 
+def get_matrix_transition(tokens):
+    time, cost = tokens[2:4]
+    property_type = tokens[4]
+    val_from = val_to = None
+    if property_type == '2': # assembly_part_feature
+        val_from = '/'.join(map(lambda x: x.strip(), tokens[5:8]))
+        val_to = '/'.join(map(lambda x: x.strip(), tokens[14:17]))
+    elif property_type == '3': # bomline_part
+        val_from = tokens[8]
+        val_to = tokens[17]
+    elif property_type == '4': # Resource
+        val_from = tokens[12]
+        val_to = tokens[21]
+    elif property_type == '5': # operation_class
+        val_from = tokens[10]
+        val_to = tokens[19]
+    else:
+        raise 'unhandled property type %s' % property_type
+    return "{:<15} {:<15} time={:<5} cost={:<}".format(val_from, val_to, time, cost)
+
 def report_matrix_values(msg_file):
     with open(msg_file) as istream:
         data = None
         matrix2values = {}
         matrix2Percent = {}
+        matrixHeader = {}
+        matrix2Transition = {}
         for line in istream:
             # 2	396	DEF_ERPCommandcreate_SetupMatrixEn
             if line.find('2') == 0 and line.find('396') == 2 and data is not None:
                 tokens = data.split('\t')
                 matrix_id = tokens[1]
+                matrix2Transition.setdefault(matrix_id, set())
+                matrix2Transition[matrix_id].add(get_matrix_transition(tokens))
                 property_type, values = get_matrix_values(tokens)
                 if property_type:
                     matrix2values.setdefault(matrix_id, {})
@@ -586,16 +614,22 @@ def report_matrix_values(msg_file):
                 pct = int(tokens[2])
                 if pct:
                     matrix2Percent[matrix_id].add(pct)
+            elif line.find('2') == 0 and line.find('395') and data is not None:
+                tokens = data.split('\t')
+                matrixHeader[tokens[1]] = tokens[2:]
 
             elif line.find(r'3') == 0:
                 data = line[:-1]
         for mid in matrix2values:
-            print('\nmatrix=%s (%d) pct=%s' % (mid, len(matrix2values[mid]), sorted(matrix2Percent[mid])))
+            print('\nmatrix=%s (%d) pct=%s horizon=%s interval=%s default_cost=%s' % (mid, len(matrix2values[mid]), sorted(matrix2Percent[mid]), *matrixHeader[mid]))
             for property_type in matrix2values[mid]:
                 print('\tproperty_type=%s' % property_type)
                 for idx, val in enumerate(sorted(matrix2values[mid][property_type])):
                     print('\t\t% 3d "%s"' % (idx, val))
                 print()
+            for item in sorted(matrix2Transition[mid]):
+                print('\t\t%s' % item)
+            print()
 """
 SetupMatrixEntry 
 	 1 setup_matrix_id               PC1_DRU
@@ -655,6 +689,69 @@ def show_setup_quality(csv_files):
         files = sorted(pairs[key], key=lambda x: rgx.search(x).group(1))
         show_header_infos(files)
 
+def get_setup_costs(csv_file):
+    with open(csv_file) as istream:
+        for line in istream:
+            hit = re.search(r'^;+(\d+)', line)
+            if hit:
+                return int(hit.group(1))
+    return -1
+
+def make_tuple(csv_files):
+    result = {}
+    handled = []
+    rgx = re.compile('setup_info.7.([^\.]+)')
+    for fn in csv_files:
+        hit = rgx.search(fn)
+        if hit and not hit.group(1) in handled:
+            key = hit.group(1)
+            files = list(filter(lambda x: x.find(key) != -1, csv_files))
+            if len(files) == 2:
+                result[key] = files
+    return result
+
+def get_qinfo(items, timepoints):
+    result = []
+    for timepoint in timepoints:
+        ref_item = items[0]
+        for item in items:
+            if item.get_start() <= timepoint:
+                ref_item = item
+            else:
+                break
+        result.append([ref_item.get_tr_accumulated(), ref_item.get_te_accumulated()])
+    return result
+
+def pprint_qinfo(check_days, vals_ref, vals_res):
+    for pfx, values in [('ref', vals_ref), ('res', vals_res)]:
+        line = "%s days " % pfx
+        for i, day in enumerate(check_days):
+            if i>0:
+                line += ", "
+            line += "{:>3}: tr={:<5} te={:<5}".format(day, values[i][0], values[i][1])
+        print(line)
+
+
+def setup_compare(csv_files, check_days):
+    rgx = re.compile('setup_info.7.([^\.]+)')
+    pairs = make_pairs(csv_files)
+    for key in pairs:
+        tp = get_datetime(key)
+        tps = list(map(lambda x: tp + timedelta(days=x), check_days))
+        print("\n\n%s %s %s" % (5 * "=", key, 25 * "="))
+        tuples = make_tuple(pairs[key])
+        for res in tuples:
+            file_ref = tuples[res][0]
+            file_res = tuples[res][1]
+
+            q_ref = get_qinfo(SetupRes(file_ref).get_items(), tps)
+            q_res = get_qinfo(SetupRes(file_res).get_items(), tps)
+            val_ref = get_setup_costs(file_ref)
+            val_res = get_setup_costs(file_res)
+            print("{:<6} total_setup_cost ref={:<7} res={:<}".format(res, val_ref, val_res))
+            pprint_qinfo(check_days, q_ref, q_res)
+            print()
+
 def parse_arguments():
     """parse arguments from command line"""
     # usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -679,6 +776,9 @@ def parse_arguments():
     parser.add_argument('-res', '--result_only', action="store_true",  # or stare_false
                         dest="result_only", default=False,  # negative store value
                         help="use only result csv files")
+    parser.add_argument('-c', '--compare', metavar='string',
+                        dest="setup_compare", default='',
+                        help="if non-empty, show setup quality for given days, e.g. 10,20,30")
     parser.add_argument('-s', '--short_version', action="store_true",  # or stare_false
                         dest="short_version", default=False,  # negative store value
                         help="report short version of fixed start values, start - end value #items")
@@ -706,6 +806,11 @@ def main():
     args = parse_arguments()
 
     csv_files = get_csv_files(args.csv_files, args.res_filter, args.reference_only, args.result_only)
+
+    if args.setup_compare:
+        check_days = [int(x) for x in args.setup_compare.split(',')]
+        setup_compare(csv_files, check_days)
+        return 0
 
     if args.quality:
         show_setup_quality(csv_files)
