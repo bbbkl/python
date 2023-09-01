@@ -10,6 +10,8 @@ from argparse import ArgumentParser
 import os.path
 import sys
 from datetime import datetime, timedelta
+from collections import Counter
+from glob import glob
 
 VERSION = '0.1'
 
@@ -26,6 +28,7 @@ def get_timestamp_key(filename):
     return re.search(r'^[^_]+_(\d+_\d+)', os.path.basename(filename)).group(1)
 
 
+
 class Pegging:
     def __init__(self, full_path_name):
         self.path_name = full_path_name
@@ -34,6 +37,19 @@ class Pegging:
         self.reserved_mat = {}
         self.items = self.parse_file(full_path_name)
         self.init_proc_lookup()
+        self.now = None
+
+    def get_now(self):
+        """now is date of any LAG item, all should be equal"""
+        if self.now is None:
+            for item in self.items:
+                if item.get_identifier().strip() == "LAG":
+                    self.now = item.get_date()
+                    break
+        return self.now
+
+    def get_diff2now(self, dt):
+        return max(0, (self.get_now() - dt).days)
 
     def get_path_name(self):
         return self.path_name
@@ -124,9 +140,16 @@ class PeggingItem:
     def get_token(self, idx):
         return self.tokens[idx] if idx < len(self.tokens) else None
 
+    def get_demand_topmost(self):
+        idx = self.get_idx('demand_topmost')
+        return self.tokens[idx] if idx < len(self.tokens) else None
+
     def is_delayed(self, thr_days=3):
-        diff = (self.get_date() - self.get_requested_date()).days
-        return diff >= thr_days
+        return self.get_delay() >= thr_days
+
+    def get_delay(self):
+        diff = (self.get_date() - self.get_due_date()).days
+        return diff
 
     def get_material(self):
         return self.tokens[self.get_idx('material')]
@@ -150,7 +173,8 @@ class PeggingItem:
         return int(self.tokens[self.get_idx('amount')])
 
     def get_identifier(self):
-        return self.tokens[self.get_idx('identifier')]
+        idx = self.get_idx('identifier')
+        return self.tokens[idx] if idx < len(self.tokens) else None
 
     def is_lag(self):
         return self.get_identifier().find('LAG') == 0
@@ -178,6 +202,10 @@ class PeggingItem:
 
     def get_requested_date(self):
         tp = self.get_token(self.get_idx('requested_date_internal'))
+        return get_datetime(tp) if tp else None
+
+    def get_due_date(self):
+        tp = self.get_token(self.get_idx('due_date'))
         return get_datetime(tp) if tp else None
 
     def get_date(self):
@@ -243,7 +271,7 @@ def get_material_to_check(pegging, mat_filter, dpl=0):
     return material_to_check
 
 def detect_problems(pegging, threshold_delay, require_same_material, material_to_check):
-    for material in material_to_check:
+    for material in sorted(material_to_check):
         print("%s %s %s" % (5*'#', material, 15*'#'))
         detect_problems_material(pegging, material, threshold_delay, require_same_material)
 
@@ -261,6 +289,60 @@ def show_process_info(pegging, processes):
             print("cmp_proc mat only=%s" % ', '.join(proc_mat - ref_mat))
         print()
 
+def report_tardiness(pegging, with_details):
+    if 0:
+        items = filter(lambda x: x.is_producer() and x.get_demand_topmost() and len(x.get_demand_topmost())>5 and len(x.get_demand_topmost())<40 and x.get_identifier().find(x.get_demand_topmost()[4:]) != -1, pegging.get_items())
+        for item in items:
+            print("part=%s id=%s" % (item.get_part(), item.get_identifier()))
+        return
+    items = filter(lambda x: x.get_demand_topmost() and x.get_identifier().find(x.get_demand_topmost()) != -1, pegging.get_items())
+    #items = filter(lambda x: x.get_identifier().find('DemandProxy_SafetyStock') == -1, items)
+    if 0:
+        for item in items:
+            dp = pegging.get_diff2now(item.get_due_date())
+            print("'%s' dd=%s dp=%d is_delayed=%s" % (item.get_identifier(), item.get_due_date(), dp, item.is_delayed(1)))
+        return
+    cnt = 0
+    cnt_delayed = 0
+    cnt_in_time = 0
+    tardiness_days = 0
+    counter = Counter()
+    bin_counter = Counter()
+    past_days = 0
+    for item in items:
+        counter[item.get_delay()] += 1
+        bin_counter[round(item.get_delay() / 1)] += 1
+        cnt += 1
+        if item.is_delayed(1):
+            cnt_delayed += 1
+            tardiness_days += item.get_delay()
+            past_days += pegging.get_diff2now(item.get_due_date())
+        else:
+            cnt_in_time += 1
+    print("#cluster_heads=%d #in_time=%d #delayed=%d #days_delay=%d #past_days=%d avg_delay=%0.1f avg_delay_no_past=%0.1f" % \
+          (cnt, cnt_in_time, cnt_delayed, tardiness_days, past_days, tardiness_days / cnt, (tardiness_days - past_days) / cnt))
+    #for diff in sorted(counter.keys()): print("%d: %d" % (diff, counter[diff]))
+
+    if with_details:
+        accu = 0
+        for diff in sorted(bin_counter.keys()):
+            accu += bin_counter[diff]
+            print("{:3} {:4} {}".format(diff, bin_counter[diff], accu))
+    print()
+
+def check_assignment_errors(pegging):
+    mat2Items = {}
+    for item in pegging.get_items():
+        mat = item.get_material()
+        mat2Items.setdefault(mat, [])
+        mat2Items[mat].append(item)
+    mat = '11200616-0353197'
+    print("%s -> %s" % (mat, mat2Items[mat][-1]))
+def get_pegging_csf_files(pegging_path):
+    if os.path.isfile(pegging_path):
+        return [pegging_path,]
+    return glob(pegging_path + "/*.pegging*.csv")
+
 def parse_arguments():
     """parse arguments from command line"""
     # usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -269,9 +351,13 @@ def parse_arguments():
     parser.add_argument('pegging_csv', metavar='pegging_csv', help='pegging csv file')
     parser.add_argument('-d', '--delay', metavar='N', type=int,  dest="threshold_delay", default=365, help="threshold delay")
     parser.add_argument('-dm', '--dominate_material', action="store_true", dest="dominate_mat", default=False, help="dominate material filter")
-    parser.add_argument('-f', '--filter', metavar='N', type=str, dest="mat_filter", default="", help="threshold delay")
+    parser.add_argument('-f', '--filter', metavar='N', type=str, dest="mat_filter", default="", help="material filter")
     parser.add_argument('-pi', '--process_info', metavar='N', type=str, dest="process_info", default="", help="process info")
     parser.add_argument('-rp', '--report_process', metavar='N', type=str, dest="report_process", default="", help="report process")
+    parser.add_argument('-tdr', '--tardiness', action="store_true", dest="tardiness", default=False, help="calculate tardiness of clusters")
+    parser.add_argument('-s', '--short', action="store_true", dest="short", default=False, help="short version")
+    parser.add_argument('-cae', '--check_assignment_errors', action="store_true", dest="cae", default=False, help="check for potential assignment errors")
+
 
 
 
@@ -281,13 +367,24 @@ def main():
     """main function"""
     args = parse_arguments()
 
-    pegging = Pegging(args.pegging_csv)
+    if os.path.isfile(args.pegging_csv):
+        pegging = Pegging(args.pegging_csv)
 
     if args.process_info:
         show_process_info(pegging, args.process_info.split(','))
         return 0
     elif args.report_process:
         report_one_proc(pegging, args.report_process)
+        return 0
+    elif args.cae:
+        check_assignment_errors(pegging)
+        return 0
+
+    if args.tardiness:
+        for pegging_csv in get_pegging_csf_files(args.pegging_csv):
+            pegging = Pegging(pegging_csv)
+            print(os.path.basename(pegging_csv))
+            report_tardiness(pegging, not args.short)
         return 0
 
     material_to_check = get_material_to_check(pegging, args.mat_filter)
