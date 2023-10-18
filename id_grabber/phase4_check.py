@@ -119,13 +119,16 @@ class PeggingItem:
         self.col_lookup = col_lookup
 
     def __str__(self):
+        what = self.get_identifier()
+        amount = self.get_amount()
         date = self.get_date().date()
         req_date = self.get_requested_date().date() if self.get_requested_date() else None
         prio = self.get_prio()
         id = self.get_proc_id()
         pos = self.get_pos()
         qty = self.get_amount()
-        return "date=%s req_date=%s prio=%.1f pos=%d q=%d proc=%s" % (date, req_date, prio, pos, qty, id)
+        return "what=%s amount=%s date=%s req_date=%s prio=%.1f pos=%d q=%d proc=%s" % (what, amount,
+                                                                                        date, req_date, prio, pos, qty, id)
 
     def get_tokens(self):
         return self.tokens
@@ -190,6 +193,10 @@ class PeggingItem:
 
     def is_consumer(self):
         return self.get_amount() < 0
+
+    def is_started(self):
+        val = self.get_token(self.get_idx('is_started'))
+        return val == '1'
 
     def get_proc_id(self):
         name = self.get_identifier()
@@ -343,6 +350,39 @@ def get_pegging_csf_files(pegging_path):
         return [pegging_path,]
     return glob(pegging_path + "/*.pegging*.csv")
 
+def get_material_curve_quality(items):
+    bad_cnt = 0
+    started_cnt = 0
+    prev_is_started = True
+    for item in items:
+        if item.is_started() != prev_is_started and not prev_is_started:
+            bad_cnt += 1
+        prev_is_started = item.is_started()
+    return bad_cnt * 100 / len(items), bad_cnt, len(items)
+
+def get_materials(mat_as_str):
+    result = []
+    for mat in mat_as_str.split(','):
+        mat = mat.strip()
+        if mat:
+            result.append(mat)
+    return result
+
+def check_is_started_quality(pegging, materials):
+    items = filter(lambda x: x.is_producer(), pegging.get_items())
+    if materials:
+        items = filter(lambda x: x.get_material() in materials, items)
+    mat2Items = {}
+    for item in items:
+        mat = item.get_material()
+        mat2Items.setdefault(mat, [])
+        mat2Items[mat].append(item)
+    for mat in mat2Items:
+        quality, cnt_bad, cnt_total = get_material_curve_quality(mat2Items[mat])
+        if quality > 0 or cnt_total > 1:
+            cnt_started = sum(1 for item in mat2Items[mat] if item.is_started())
+            print("%s %0.1f (%d/%d/%d)" % (mat, quality, cnt_bad, cnt_started, cnt_total))
+
 def parse_arguments():
     """parse arguments from command line"""
     # usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -357,6 +397,7 @@ def parse_arguments():
     parser.add_argument('-tdr', '--tardiness', action="store_true", dest="tardiness", default=False, help="calculate tardiness of clusters")
     parser.add_argument('-s', '--short', action="store_true", dest="short", default=False, help="short version")
     parser.add_argument('-cae', '--check_assignment_errors', action="store_true", dest="cae", default=False, help="check for potential assignment errors")
+    parser.add_argument('-isq', '--check_is_started_quality', action="store_true", dest="isq", default=False, help="check is_started quality")
 
 
 
@@ -378,6 +419,11 @@ def main():
         return 0
     elif args.cae:
         check_assignment_errors(pegging)
+        return 0
+
+    if args.isq:
+        materials = get_materials(args.mat_filter)
+        check_is_started_quality(pegging, materials)
         return 0
 
     if args.tardiness:
