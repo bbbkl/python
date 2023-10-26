@@ -166,7 +166,7 @@ class PeggingItem:
 
     def get_prio(self):
         val = self.get_token(self.get_idx('priority_scheduling,prio'))
-        return float(val) if val else 0
+        return float(val.replace(',', '.')) if val else 0
 
     def get_pos(self):
         val = self.get_token(self.get_idx('planning_position,pos'))
@@ -343,8 +343,14 @@ def check_assignment_errors(pegging):
         mat = item.get_material()
         mat2Items.setdefault(mat, [])
         mat2Items[mat].append(item)
-    mat = '11200616-0353197'
-    print("%s -> %s" % (mat, mat2Items[mat][-1]))
+    mat = 'ZTL000499'
+    #for mat in mat2Items:
+    print("%s -> %s #=%d" % (mat, mat2Items[mat][-1], len(mat2Items[mat])))
+        # producer is too early if
+        # 1. sum > amount
+        # 2. date < due_date
+
+
 def get_pegging_csf_files(pegging_path):
     if os.path.isfile(pegging_path):
         return [pegging_path,]
@@ -368,7 +374,7 @@ def get_materials(mat_as_str):
             result.append(mat)
     return result
 
-def check_is_started_quality(pegging, materials):
+def check_is_started_quality(pegging, materials, short=True):
     items = filter(lambda x: x.is_producer(), pegging.get_items())
     if materials:
         items = filter(lambda x: x.get_material() in materials, items)
@@ -379,7 +385,7 @@ def check_is_started_quality(pegging, materials):
         mat2Items[mat].append(item)
     for mat in mat2Items:
         quality, cnt_bad, cnt_total = get_material_curve_quality(mat2Items[mat])
-        if quality > 0 or cnt_total > 1:
+        if quality > 0 or (not short and cnt_total > 1):
             cnt_started = sum(1 for item in mat2Items[mat] if item.is_started())
             print("%s %0.1f (%d/%d/%d)" % (mat, quality, cnt_bad, cnt_started, cnt_total))
 
@@ -423,7 +429,7 @@ def main():
 
     if args.isq:
         materials = get_materials(args.mat_filter)
-        check_is_started_quality(pegging, materials)
+        check_is_started_quality(pegging, materials, args.short)
         return 0
 
     if args.tardiness:
