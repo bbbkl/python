@@ -61,17 +61,23 @@ class PerformanceTrace:
 
     def get_type(self):
         ctp_candidate = False
+        p_vopt16_candidate = False
         for line in self._lines:
-            if line.find('calcCtp') != -1 or line.find('CTP') != -1:
-                ctp_candidate = True
             if line.find('calcAll') != -1:
                 return 'opti'
+        for line in self._lines:
+            if line.find('PartSyncStarted') != -1:
+                p_vopt16_candidate = True
+            if line.find('calcCtp') != -1 or line.find('CTP') != -1:
+                    ctp_candidate = True
             if line.find('sync only') != -1 or \
                line.find('begin syncronize') != -1 or \
                line.find('Optimization finished sync done') != -1:
                 return 'sync'
         if ctp_candidate:
             return 'ctp'
+        if p_vopt16_candidate:
+            return 'pvopt16'
         return 'unknown'
 
     def get_proc_act_info(self):
@@ -249,7 +255,7 @@ def show_report(performance_items, stream=sys.stdout):
         prev_job = item.job() if item.job() is not None else -1
 
         line = re.sub(r'[^\x00-\x7F]', '', str(item))  # strip non ascii characters
-        stream.write("%02d %s: %s %s %s\n%s\n" % (
+        stream.write("%02d %s_job: %s %s %s\n%s\n" % (
             idx, item.get_type(), item.elapsed_total(),
             item.start_to_end(), item.get_start_timepoint(), line))
 
