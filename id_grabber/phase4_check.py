@@ -175,6 +175,9 @@ class PeggingItem:
     def get_amount(self):
         return int(self.tokens[self.get_idx('amount')])
 
+    def get_sum(self):
+        return int(self.tokens[self.get_idx('sum')])
+
     def get_identifier(self):
         idx = self.get_idx('identifier')
         return self.tokens[idx] if idx < len(self.tokens) else None
@@ -219,6 +222,9 @@ class PeggingItem:
         tp = self.tokens[self.get_idx('date')]
         return get_datetime(tp)
 
+    def get_requested_date_internal(self):
+        tp = self._tokens[self.get_idx('requested_date_internal')]
+        return get_datetime(tp)
 
 def parse_header(line):
     tokens = line.split(';')
