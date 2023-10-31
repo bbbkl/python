@@ -33,7 +33,7 @@ class MAL:
 
     def parse_file(self, filename):
         items = []
-        with open(filename, encoding="utf-16") as file:
+        with open(filename, encoding="utf-8") as file:
             lines = [line.rstrip() for line in file]
             header = parse_header(lines[0])
             for idx, col in enumerate(header):
@@ -70,10 +70,23 @@ class MA:
                 return True
         return False
 
+    def has_procura(self):
+        return self.tokens[self.get_idx('Unterschriftenzusatz')] == 'ppa.'
+
     def pass_deadline(self, deadline="17.01.2024"):
-        deadline = get_datetime(deadline)
+        tp_deadline = get_datetime(deadline)
         exit = self.get_exit()
-        return exit is None or exit > deadline
+        return exit is None or exit > tp_deadline
+
+    def pass_altersteilzeit(self, deadline="01.01.1966"):
+        tp_deadline = get_datetime(deadline)
+        return not(self.is_passiv() and self.birthday() < tp_deadline)
+
+    def is_passiv(self):
+        return self.tokens[self.get_idx('Personal Status')] == 'Passiv'
+
+    def birthday(self):
+        return get_datetime(self.tokens[self.get_idx('Geburtsdatum')])
 
     def get_exit(self):
         val = self.tokens[self.get_idx('Austrittsdatum')]
@@ -114,10 +127,15 @@ def main():
     args = parse_arguments()
 
     mal = MAL(args.br_csv)
-    no_la = filter(lambda x: not x.is_la(), mal.get_items())
-    items = filter(lambda x: x.pass_deadline(), no_la)
+    items = mal.get_items()
+    #items = filter(lambda x: not x.is_la(), items)
+    #items = filter(lambda x: x.pass_deadline(), items)
+    #items = filter(lambda x: not x.pass_altersteilzeit(), items)
+    items = filter(lambda x: x.has_procura(), items)
 
-    if 1:
+    for item in items: print(item)
+
+    if 0:
         cnt_total = cnt_male = 0
         for item in items:
             cnt_total += 1
