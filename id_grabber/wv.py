@@ -19,6 +19,16 @@ def get_datetime(tp_as_string):
     if len(tp_as_string) == 10:
         return datetime.strptime(tp_as_string, '%d.%m.%Y')
     return None
+
+def find_ambigeous(items):
+    handled = set()
+    for item in items:
+        name = item.name()
+        if name in handled:
+            print('ambigeous %s' % name)
+        handled.add(name)
+    print()
+
 class MAL:
     def __init__(self, full_path_name):
         self.path_name = full_path_name
@@ -52,7 +62,14 @@ class MA:
         self.col_lookup = col_lookup
 
     def __str__(self):
-        return "%s typ='%s'" % (self.name(), self.get_stellentyp())
+        msg = '{:25} typ={:36}'.format(self.name(), self.get_stellentyp(False))
+        if self.has_procura():
+            msg += " prokura=1"
+        if self.get_exit():
+            msg += ' geb=%s' % self.get_birthday(True)
+            msg += ' austritt=%s' % self.get_exit(True)
+            msg += ' status=%s' % self.get_status()
+        return msg
 
     def name(self):
         return self.tokens[0]
@@ -80,20 +97,51 @@ class MA:
 
     def pass_altersteilzeit(self, deadline="01.01.1966"):
         tp_deadline = get_datetime(deadline)
-        return not(self.is_passiv() and self.birthday() < tp_deadline)
+        return not(self.is_passiv() and self.get_birthday() < tp_deadline)
 
     def is_passiv(self):
         return self.tokens[self.get_idx('Personal Status')] == 'Passiv'
 
-    def birthday(self):
-        return get_datetime(self.tokens[self.get_idx('Geburtsdatum')])
+    def pa_what(self):
+        val = self.tokens[self.get_idx('Arbeitgeber (Firmenbezeichnung)')]
+        if val.find('Group')!=-1: return 'group'
+        if val.find('GmbH')!=-1: return 'gmbh'
+        return 'unknown'
 
-    def get_exit(self):
+    def section(self):
+        return self.tokens[self.get_idx('Organisation max. Anteil')]
+
+    def get_birthday(self, raw=False):
+        val = self.tokens[self.get_idx('Geburtsdatum')]
+        return val if raw else get_datetime(val)
+
+    def get_exit(self, raw=False):
         val = self.tokens[self.get_idx('Austrittsdatum')]
-        return get_datetime(val)
+        return val if raw else get_datetime(val)
 
-    def get_stellentyp(self):
-        return self.tokens[self.get_idx('Stellentyp')]
+    def get_stellentyp(self, long_version=True):
+        val = self.tokens[self.get_idx('Stellentyp')]
+        if long_version:
+            return val
+        pos = val.find(',')
+        if pos > 0:
+            return val[0:pos]
+        return val
+
+    def get_street(self):
+        return self.tokens[self.get_idx('Straﬂe')]
+
+    def get_address_addon(self):
+        return self.tokens[self.get_idx('Adresszusatz')]
+
+    def get_plz(self):
+        return self.tokens[self.get_idx('PLZ')]
+
+    def get_city(self):
+        return self.tokens[self.get_idx('Ort')]
+
+    def get_status(self):
+        return self.tokens[self.get_idx('Personal Status')]
 
     def get_tokens(self):
         return self.tokens
@@ -128,20 +176,25 @@ def main():
 
     mal = MAL(args.br_csv)
     items = mal.get_items()
-    #items = filter(lambda x: not x.is_la(), items)
-    #items = filter(lambda x: x.pass_deadline(), items)
+    #find_ambigeous(items)
+    items = filter(lambda x: not x.is_la(), items)
+    items = filter(lambda x: x.pass_deadline(), items)
     #items = filter(lambda x: not x.pass_altersteilzeit(), items)
-    items = filter(lambda x: x.has_procura(), items)
+    #items = filter(lambda x: x.has_procura() or x.is_la(), items)
 
-    for item in items: print(item)
+    #for item in items: print(item)
 
-    if 0:
+    if 1:
         cnt_total = cnt_male = 0
         for item in items:
             cnt_total += 1
             if item.is_male():
                 cnt_male += 1
-        print("total=%d #m=%d (%.1f)" % (cnt_total, cnt_male, 100*cnt_male/cnt_total))
+        cnt_female = cnt_total - cnt_male
+        print("total=%d #m=%d (%.1f) #f=%d (%.1f)" %
+              (cnt_total,
+               cnt_male, 100*cnt_male/cnt_total,
+               cnt_female, 100*cnt_female/cnt_total))
 
 
 if __name__ == "__main__":
