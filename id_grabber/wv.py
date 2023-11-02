@@ -11,6 +11,7 @@ from argparse import ArgumentParser
 import os.path
 import sys
 from datetime import datetime, timedelta
+from collections import Counter
 
 VERSION = '0.1'
 
@@ -87,6 +88,13 @@ class MA:
                 return True
         return False
 
+    def get_standort(self):
+        val = self.tokens[self.get_idx('Standort')]
+        val = val.replace('Weilerbach (Kaiserslautern)', 'Weilerbach')
+        val = val.replace('Stuttgart (Böblingen)', 'Stuttgart')
+        val = val.replace('München (Ismaning)', 'München')
+        return val
+
     def has_procura(self):
         return self.tokens[self.get_idx('Unterschriftenzusatz')] == 'ppa.'
 
@@ -107,6 +115,11 @@ class MA:
         if val.find('Group')!=-1: return 'group'
         if val.find('GmbH')!=-1: return 'gmbh'
         return 'unknown'
+
+    def get_remote_type(self):
+        if self.tokens[self.get_idx('Homeoffice')].lower() == 'ja': return 'homeoffice'
+        if self.tokens[self.get_idx('Remoteoffice-Erklärung NEU unterzeichnet')].lower() == 'ja': return 'remoteoffice'
+        return "nix"
 
     def section(self):
         return self.tokens[self.get_idx('Organisation max. Anteil')]
@@ -160,6 +173,24 @@ def parse_header(line):
     tokens = line.split(';')
     return tokens
 
+def report_office_type(items, standort='Weilerbach'):
+    items = filter(lambda x: x.get_standort()==standort, items)
+    office_types = Counter(x.get_remote_type() for x in items)
+    print("Standort %s" % standort)
+    for kind in office_types.most_common():
+        print("  %s: %d" % (kind[0], kind[1]))
+
+def report_all_names(items):
+    names = [x.name() for x in items]
+    names.sort(key=lambda s: s.lower())
+    for name in names:
+        print(name)
+
+def report_standorte(items):
+    standorte = Counter([x.get_standort() for x in items])
+    for standort in standorte.most_common():
+        print("%s: %d" % (standort[0], standort[1]))
+
 def parse_arguments():
     """parse arguments from command line"""
     # usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -169,20 +200,31 @@ def parse_arguments():
 
     return parser.parse_args()
 
-
 def main():
     """main function"""
     args = parse_arguments()
 
     mal = MAL(args.br_csv)
     items = mal.get_items()
+
     #find_ambigeous(items)
-    items = filter(lambda x: not x.is_la(), items)
-    items = filter(lambda x: x.pass_deadline(), items)
-    #items = filter(lambda x: not x.pass_altersteilzeit(), items)
+
+    if 1:
+        report_office_type(items)
+        #report_standorte(items)
+        return 0
+
+    if 0: # report all name
+        report_all_names(items)
+        return 0;
+
+    #items = filter(lambda x: not x.is_la(), items)
+    #items = filter(lambda x: x.pass_deadline(), items)
+    items = filter(lambda x: not x.pass_altersteilzeit(), items)
     #items = filter(lambda x: x.has_procura() or x.is_la(), items)
 
-    #for item in items: print(item)
+    for item in items: print(item)
+    return 0
 
     if 1:
         cnt_total = cnt_male = 0
