@@ -80,13 +80,11 @@ class MA:
 
     def is_la(self):
         val = self.get_stellentyp()
-        if val.find('kein SMT') != -1:
-            return False
-        keys = ['- SMT', 'Geschäftsführungsebene']
+        keys = ['Geschäftsführungsebene',]
         for key in keys:
             if val.find(key) != -1:
                 return True
-        return False
+        return self.has_procura()
 
     def get_standort(self):
         val = self.tokens[self.get_idx('Standort')]
@@ -98,14 +96,13 @@ class MA:
     def has_procura(self):
         return self.tokens[self.get_idx('Unterschriftenzusatz')] == 'ppa.'
 
-    def pass_deadline(self, deadline="17.01.2024"):
+    def pass_deadline(self, deadline="24.01.2024"):
         tp_deadline = get_datetime(deadline)
         exit = self.get_exit()
         return exit is None or exit > tp_deadline
 
-    def pass_altersteilzeit(self, deadline="01.01.1966"):
-        tp_deadline = get_datetime(deadline)
-        return not(self.is_passiv() and self.get_birthday() < tp_deadline)
+    def pass_altersteilzeit(self):
+        return not (self.is_passiv() and self.get_exit() is not None)
 
     def is_passiv(self):
         return self.tokens[self.get_idx('Personal Status')] == 'Passiv'
@@ -226,10 +223,11 @@ def main():
     items = filter(lambda x: x.pass_deadline(), items)
     items = filter(lambda x: x.pass_altersteilzeit(), items)
     #items = filter(lambda x: x.has_procura() or x.is_la(), items)
+    #items = filter(lambda x: x.get_status()=='Passiv', items)
 
-    report_status(items)
+    #report_status(items)
     #for item in items: print(item)
-    return 0
+    #return 0
 
     if 1:
         cnt_total = cnt_male = 0
