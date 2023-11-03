@@ -44,7 +44,7 @@ class MAL:
 
     def parse_file(self, filename):
         items = []
-        with open(filename, encoding="utf-8") as file:
+        with open(filename) as file: #, encoding="utf-8" */) as file:
             lines = [line.rstrip() for line in file]
             header = parse_header(lines[0])
             for idx, col in enumerate(header):
@@ -191,6 +191,11 @@ def report_standorte(items):
     for standort in standorte.most_common():
         print("%s: %d" % (standort[0], standort[1]))
 
+def report_status(items):
+    status = Counter([x.get_status() for x in items])
+    for item in status.most_common():
+        print('%s: %d' % (item[0], item[1]))
+
 def parse_arguments():
     """parse arguments from command line"""
     # usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -207,9 +212,8 @@ def main():
     mal = MAL(args.br_csv)
     items = mal.get_items()
 
-    #find_ambigeous(items)
-
-    if 1:
+    if 0:
+        find_ambigeous(items)
         report_office_type(items)
         #report_standorte(items)
         return 0
@@ -218,12 +222,13 @@ def main():
         report_all_names(items)
         return 0;
 
-    #items = filter(lambda x: not x.is_la(), items)
-    #items = filter(lambda x: x.pass_deadline(), items)
-    items = filter(lambda x: not x.pass_altersteilzeit(), items)
+    items = filter(lambda x: not x.is_la(), items)
+    items = filter(lambda x: x.pass_deadline(), items)
+    items = filter(lambda x: x.pass_altersteilzeit(), items)
     #items = filter(lambda x: x.has_procura() or x.is_la(), items)
 
-    for item in items: print(item)
+    report_status(items)
+    #for item in items: print(item)
     return 0
 
     if 1:
