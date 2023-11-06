@@ -15,6 +15,24 @@ from collections import Counter
 
 VERSION = '0.1'
 
+def test_encoding(message_file):
+    """check for file encoding"""
+    encodings = ["UTF-8", "ISO-8859-1", "latin-1"]
+
+    if not os.path.exists(message_file):
+        raise FileNotFoundError(message_file)
+
+    for item in encodings:
+        try:
+            for _ in open(message_file, encoding=item):
+                pass
+            return item
+        except:
+            pass
+
+    raise "Cannot get right encoding, tried %s" % str(encodings)
+
+
 def get_datetime(tp_as_string):
     # format 2023-10-18
     if len(tp_as_string) == 10:
@@ -44,7 +62,8 @@ class MAL:
 
     def parse_file(self, filename):
         items = []
-        with open(filename) as file: #, encoding="utf-8" */) as file:
+        enc = test_encoding(filename)
+        with open(filename, encoding=enc) as file:
             lines = [line.rstrip() for line in file]
             header = parse_header(lines[0])
             for idx, col in enumerate(header):
