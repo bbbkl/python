@@ -269,6 +269,18 @@ def write_compact_file(src_path, dst_path):
                 print("repaired end of opti")
 
 
+def check_pegging(fn_old, fn_new):
+    """rename pegging.csv file with timestamp, which belongs to a message file"""
+    hit = re.search(r'(_\d{8}_\d{6})\.', os.path.basename(fn_old))
+    if hit:
+        timestamp = hit.group(1)
+        csv_files = glob.glob(os.path.dirname(fn_old) + '/*' + timestamp + '.pegging.csv')
+        if len(csv_files) == 1:
+            csv_old = csv_files[0]
+            name_new = os.path.splitext(os.path.basename(fn_new))[0] + ".pegging.csv"
+            csv_new = os.path.join(os.path.dirname(fn_new), name_new)
+            os.rename(csv_old, csv_new)
+
 def cleanup(src, dst, dst_tmp):
     """remove src, rename dst_tmp to dst"""
     os.remove(src)
@@ -290,6 +302,7 @@ def handle_file(src_path, prefix, longdate, inline):
         inline_config(dst_tmp, config_entries)
     cleanup(src_path, dst_path, dst_tmp)
     print("handled %s" % src_path)
+    return dst_path
 
 
 def parse_arguments():
@@ -328,7 +341,8 @@ def main():
         files_to_handle = glob.glob(src_path + '/*.dat', recursive=False)
 
     for fn in files_to_handle:
-        handle_file(fn, prefix, longdate, inline)
+        new_fn = handle_file(fn, prefix, longdate, inline)
+        check_pegging(fn, new_fn)
 
 
 if __name__ == "__main__":
