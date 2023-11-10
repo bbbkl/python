@@ -217,7 +217,7 @@ class TrActivity(BaseItem):
         return tokens       
        
     def headline_ids(self):
-        return "%s %s %d %s %d" % (self.process_id(), self.partproc_id(), self.akt_pos(), self.ident_akt(), self.fixiert())   
+        return "%s %s %d %s fix=%d done=%d" % (self.process_id(), self.partproc_id(), self.akt_pos(), self.ident_akt(), self.fixiert(), self.done())
         
     @classmethod        
     def commands(cls):

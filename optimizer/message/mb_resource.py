@@ -72,7 +72,7 @@ class MResourceKombination(BaseItem):
 
     def headline_ids(self):
         """get headline for explained mode"""
-        return "%s %s %s %s" % (self.res_art1(), self.res1(), self.res_art2(), self.res1())
+        return "%s %s %s %s" % (self.res_art1(), self.res1(), self.res_art2(), self.res2())
 
     @classmethod
     def commands(cls):
