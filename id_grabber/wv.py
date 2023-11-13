@@ -94,6 +94,12 @@ class MA:
     def name(self):
         return self.tokens[0]
 
+    def vorname(self):
+        return self.name().split(',')[1]
+
+    def nachname(self):
+        return self.name().split(',')[0]
+
     def is_male(self):
         return self.tokens[self.get_idx('Geschlecht')][0] == 'M'
 
@@ -138,7 +144,10 @@ class MA:
         return "nix"
 
     def section(self):
-        return self.tokens[self.get_idx('Organisation max. Anteil')]
+        val = self.tokens[self.get_idx('Organisation max. Anteil')]
+        if val.find('Team') == 0:
+            val = 'Presales ' + val
+        return val
 
     def get_birthday(self, raw=False):
         val = self.tokens[self.get_idx('Geburtsdatum')]
@@ -171,6 +180,18 @@ class MA:
 
     def get_status(self):
         return self.tokens[self.get_idx('Personal Status')]
+
+    def get_comment(self):
+        special = [('Finkler', '10.06.1985', 'michael.finkler.1@proalpha.com'),
+                   ('Hoffmann', '31.12.1968', 'maik.hoffmann@proalpha.com'),
+                   ('Hoffmann', '28.04.1996', 'maik.hoffmann.1@proalpha.com'),
+                   ('Roth', '24.02.1983', 'sebastian.roth@proalpha.com'),
+                   ('Roth', '28.08.1985', ' sebastian.roth.1@proalpha.com'),
+                   ('Weber', '24.09.1993', 'daniel.weber@proalpha.com'),
+                   ('Weber', '23.01.1987', 'daniel.weber.1@proalpha.com'), ]
+        for name, birthdate, email in special:
+            if(name == self.nachname() and birthdate == self.get_birthday(True)): return ' ' + email
+        return ''
 
     def get_tokens(self):
         return self.tokens
@@ -221,6 +242,11 @@ def parse_arguments():
 
     return parser.parse_args()
 
+def report_items(items, want_male):
+    print('Nr.;Familienname;Vorname;Organisationseinheit')
+    for idx, item in enumerate(filter(lambda x: x.is_male()==want_male, items)):
+        print('%d;%s;%s;%s' % (idx+1, item.nachname(), item.vorname(), item.section() + item.get_comment()))
+
 def main():
     """main function"""
     args = parse_arguments()
@@ -248,7 +274,10 @@ def main():
     #for item in items: print(item)
     #return 0
 
-    if 1:
+    report_items(items, False) # female
+    #report_items(items, True) # male
+
+    if 0:
         cnt_total = cnt_male = 0
         for item in items:
             cnt_total += 1
