@@ -242,6 +242,14 @@ def parse_arguments():
 
     return parser.parse_args()
 
+def report_passiv(items):
+    print("Nachname;Vorname;Männlich;Stra0e;PLZ;Ort")
+    for item in filter(lambda x: x.get_status() == 'Passiv', items):
+        print("%s;%s;%d;%s;%s;%s" % \
+              (item.nachname(), item.vorname(), 1 if item.is_male() else 0, \
+               item.get_street(), item.get_plz(), item.get_city()))
+
+
 def report_items(items, want_male):
     print('Nr.;Familienname;Vorname;Organisationseinheit')
     for idx, item in enumerate(filter(lambda x: x.is_male()==want_male, items)):
@@ -271,8 +279,9 @@ def main():
     #items = filter(lambda x: x.get_status()=='Passiv', items)
 
     #report_status(items)
+    report_passiv(items)
     #for item in items: print(item)
-    #return 0
+    return 0
 
     report_items(items, False) # female
     #report_items(items, True) # male
