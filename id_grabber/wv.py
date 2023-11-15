@@ -11,6 +11,7 @@ from argparse import ArgumentParser
 import os.path
 import sys
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from collections import Counter
 
 VERSION = '0.1'
@@ -85,6 +86,8 @@ class MA:
         msg = '{:25} typ={:36}'.format(self.name(), self.get_stellentyp(False))
         if self.has_procura():
             msg += " prokura=1"
+        if not self.is_selectable():
+            msg += ' entritt=%s' % self.get_eintrittsdatum(True)
         if self.get_exit():
             msg += ' geb=%s' % self.get_birthday(True)
             msg += ' austritt=%s' % self.get_exit(True)
@@ -121,7 +124,7 @@ class MA:
     def has_procura(self):
         return self.tokens[self.get_idx('Unterschriftenzusatz')] == 'ppa.'
 
-    def pass_deadline(self, deadline="24.01.2024"):
+    def pass_deadline(self, deadline='24.01.2024'):
         tp_deadline = get_datetime(deadline)
         exit = self.get_exit()
         return exit is None or exit > tp_deadline
@@ -131,6 +134,10 @@ class MA:
 
     def is_passiv(self):
         return self.tokens[self.get_idx('Personal Status')] == 'Passiv'
+
+    def is_selectable(self, deadline = '24.01.2024'):
+        tp_deadline = get_datetime(deadline) - relativedelta(months=6)
+        return self.get_eintrittsdatum() <= tp_deadline
 
     def pa_what(self):
         val = self.tokens[self.get_idx('Arbeitgeber (Firmenbezeichnung)')]
@@ -147,7 +154,12 @@ class MA:
         val = self.tokens[self.get_idx('Organisation max. Anteil')]
         if val.find('Team') == 0:
             val = 'Presales ' + val
+        if self.section_long().find('R&D') != -1:
+            val = 'R&D ' + val
         return val
+
+    def section_long(self):
+        return self.tokens[self.get_idx('Organisation > max. Anteil')]
 
     def get_birthday(self, raw=False):
         val = self.tokens[self.get_idx('Geburtsdatum')]
@@ -155,6 +167,10 @@ class MA:
 
     def get_exit(self, raw=False):
         val = self.tokens[self.get_idx('Austrittsdatum')]
+        return val if raw else get_datetime(val)
+
+    def get_eintrittsdatum(self, raw=False):
+        val = self.tokens[self.get_idx('Eintrittsdatum')]
         return val if raw else get_datetime(val)
 
     def get_stellentyp(self, long_version=True):
@@ -253,7 +269,8 @@ def report_passiv(items):
 def report_items(items, want_male):
     print('Nr.;Familienname;Vorname;Organisationseinheit')
     for idx, item in enumerate(filter(lambda x: x.is_male()==want_male, items)):
-        print('%d;%s;%s;%s' % (idx+1, item.nachname(), item.vorname(), item.section() + item.get_comment()))
+        name = item.nachname() if item.is_selectable() else item.nachname() + ' *1'
+        print('%d;%s;%s;%s' % (idx+1, name, item.vorname(), item.section() + item.get_comment()))
 
 def main():
     """main function"""
@@ -275,6 +292,7 @@ def main():
     items = filter(lambda x: not x.is_la(), items)
     items = filter(lambda x: x.pass_deadline(), items)
     items = filter(lambda x: x.pass_altersteilzeit(), items)
+    #items = filter(lambda x: not x.is_selectable(), items)
     #items = filter(lambda x: x.has_procura() or x.is_la(), items)
     #items = filter(lambda x: x.get_status()=='Passiv', items)
 
