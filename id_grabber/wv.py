@@ -83,7 +83,8 @@ class MA:
         self.col_lookup = col_lookup
 
     def __str__(self):
-        msg = '{:25} typ={:36}'.format(self.name(), self.get_stellentyp(False))
+        msg = '{:25} typ={:38}'.format(self.name(), self.get_stellentyp(False))
+        msg += '--> {:35}<--'.format(self.section())
         if self.has_procura():
             msg += " prokura=1"
         if not self.is_selectable():
@@ -152,11 +153,15 @@ class MA:
 
     def section(self):
         val = self.tokens[self.get_idx('Organisation max. Anteil')]
-        if val.find('Team') == 0:
-            val = 'Presales ' + val
+        if val.find('Team') == 0 and val.find('&') == -1: # &-check to avoid false positiv
+            val = self.get_section_nth(-2) + ' ' + val
         if self.section_long().find('R&D') != -1:
             val = 'R&D ' + val
         return val
+
+    def get_section_nth(self, nth=-1):
+        tokens = self.section_long().split('>')
+        return tokens[nth].strip()
 
     def section_long(self):
         return self.tokens[self.get_idx('Organisation > max. Anteil')]
@@ -295,14 +300,15 @@ def main():
     #items = filter(lambda x: not x.is_selectable(), items)
     #items = filter(lambda x: x.has_procura() or x.is_la(), items)
     #items = filter(lambda x: x.get_status()=='Passiv', items)
+    #items = filter(lambda x: x.section().find('Team') != -1, items)
 
     #report_status(items)
-    report_passiv(items)
+    #report_passiv(items)
     #for item in items: print(item)
-    return 0
+    #return 0
 
-    report_items(items, False) # female
-    #report_items(items, True) # male
+    #report_items(items, False) # female
+    report_items(items, True) # male
 
     if 0:
         cnt_total = cnt_male = 0
