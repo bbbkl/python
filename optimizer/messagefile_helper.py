@@ -194,7 +194,7 @@ def checkopt(message_file):
             res = checkopt_line(line)
             if res is not None:
                 return res
-    return 'unkown'
+    return 'unknown'
 
 
 def checkdate_line(line, longdate):
