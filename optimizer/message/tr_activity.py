@@ -102,7 +102,13 @@ class TrActivity(BaseItem):
     def done(self):
         """ fertig gemeldet """
         return 1 == int(self._tokens[29])
-    
+
+    def duedate(self):
+        idx = 43
+        if len(self._tokens) > idx:
+            return self._tokens[idx]
+        return None
+
     def ident_part_proc_key(self):
         return self.make_key(self.process_bereich_orig(), self.process_id(), self.partproc_id(), self.ident_akt())
     
@@ -217,8 +223,11 @@ class TrActivity(BaseItem):
         return tokens       
        
     def headline_ids(self):
-        return "%s %s %d %s fix=%d done=%d" % (self.process_id(), self.partproc_id(), self.akt_pos(), self.ident_akt(), self.fixiert(), self.done())
-        
+        msg = "%s %s %d %s fix=%d done=%d" % (self.process_id(), self.partproc_id(), self.akt_pos(), self.ident_akt(), self.fixiert(), self.done())
+        if self.duedate() and self.duedate() != '?':
+            msg += " dd=%s" % self.duedate()
+        return msg
+
     @classmethod        
     def commands(cls):
         return ['DEF_ERPCommandcreate_Activity_____', ]
