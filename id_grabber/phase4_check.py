@@ -182,6 +182,9 @@ class PeggingItem:
         idx = self.get_idx('identifier')
         return self.tokens[idx] if idx < len(self.tokens) else None
 
+    def get_object_type(self):
+        return self.tokens[self.get_idx('object_type')]
+
     def is_lag(self):
         return self.get_identifier().find('LAG') == 0
 
@@ -198,7 +201,7 @@ class PeggingItem:
         return self.get_amount() < 0
 
     def is_started(self):
-        val = self.get_token(self.get_idx('is_started'))
+        val = self.get_token(self.get_idx('started,is_started'))
         return val == '1'
 
     def get_proc_id(self):
@@ -309,7 +312,7 @@ def report_tardiness(pegging, with_details):
             print("part=%s id=%s" % (item.get_part(), item.get_identifier()))
         return
     items = filter(lambda x: x.get_demand_topmost() and x.get_identifier().find(x.get_demand_topmost()) != -1, pegging.get_items())
-    #items = filter(lambda x: x.get_identifier().find('DemandProxy_SafetyStock') == -1, items)
+    #items = filter(lambda x: x.get_object_type() != 'SafetyStock', items)
     if 0:
         for item in items:
             dp = pegging.get_diff2now(item.get_due_date())
