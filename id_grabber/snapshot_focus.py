@@ -123,6 +123,8 @@ def get_ordered_process_ids(log_file):
     for line in open(log_file):
         hit = re.search(r'process\s+(\S.*\S)\s+dispolevel:\s+\d+\s+priority:', line)
         if hit is None:
+            hit = re.search(r'^\s+\d+\s+\d+\s+process=(\S+)', line)
+        if hit is None:
             hit = re.search(r'begin SolGoal_scheduleSequenceBlockI::execute scheduling process: (\S.*) id=', line)
         if hit is not None:
             id = hit.group(1)
