@@ -69,7 +69,7 @@ class BaseItem(object):
                 descriptions.append("xxx_missing_description")
         if cnt < 4:
             for i in range(cnt):
-                line += "\t%s: %s" % (descriptions[i], tokens[i])
+                line += "\t%s=%s" % (descriptions[i], tokens[i])
             return line
         if with_index_numbers:
             max_len = max(map(len, descriptions)) + 3

@@ -67,7 +67,7 @@ class M_DispoBew(BaseItem):
 
     @classmethod
     def commands(cls):
-        return ['DEF_ERPCommandcreate_M_DispoBew___', 'DEF_ERPCommandcreate_ApsTrMRPMovem']
+        return ['DEF_ERPCommandcreate_ApsTrMRPMovem', ] # old name DEF_ERPCommandcreate_M_DispoBew___
 
     def token_descriptions(self):
         if self.mode51():

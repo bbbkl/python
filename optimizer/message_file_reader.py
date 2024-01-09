@@ -42,7 +42,7 @@ from message.m_ressgruppe import MRessGruppe
 from message.m_uebort import M_UebOrt
 from message.m_uebadresse import M_UebAdresse
 from message.reason import ReasonMaterial, ReasonResource, ReasonResRes, ReasonTimebound, ReasonStructure, ReasonAdmin, ReasonHead, Reason, ReasonAct
-from message.listener import APSCommandackSolutionCtpProd, JobContext, JobContextCtp, JobContextCtpProd, NoSolutionPPA, ContTimePoint
+from message.listener import APSCommandackSolutionCtpProd, APSCommandackSolution, APSCommandackSolutionResult, JobContext, JobContextCtp, JobContextCtpProd, NoSolutionPPA, ContTimePoint
 from message.schedulinginfo import SchedulingInfo, SchedulingTrigger
 from message.sending_queue import DelSimulationMode, RollbackSimulationMode
 from message.setup_matrix import SetupMatrix, SetupMatrixEntry, SetupPartFeature, SetupResourceFeature, SetupMatrixDefinition
@@ -399,7 +399,8 @@ def get_id_to_class_mapping():
                    ML_ArtOrt, ML_ArtOrtVar, M_UebOrt, M_UebAdresse, CheckErpID, TrStock, TrSafetyStock, TrStockFromMLArtOrtKomm,
                    ReasonMaterial, ReasonResource, ReasonResRes, ReasonTimebound, ReasonStructure, ReasonAdmin,
                    ReasonHead, Reason, ReasonAct,
-                   APSCommandackSolutionCtpProd, JobContext, JobContextCtp, JobContextCtpProd,
+                   APSCommandackSolutionCtpProd, APSCommandackSolution, APSCommandackSolutionResult,
+                   JobContext, JobContextCtp, JobContextCtpProd,
                    DelSimulationMode, RollbackSimulationMode,
                    SetupMatrix, SetupMatrixEntry, SetupPartFeature, SetupResourceFeature, SetupMatrixDefinition,
                    CreateContTimePoint, CreateZeitMengenEinheit, SetDatabaseTime, MarkForGetSolCtpProd, GetSolutionCtpProd, GetSolutionCtp, SetConfigParam, UpdateActivity, UpdateResource,
