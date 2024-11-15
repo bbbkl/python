@@ -350,8 +350,9 @@ def check_assignment_errors(pegging):
         mat2Items.setdefault(mat, [])
         mat2Items[mat].append(item)
     mat = 'ZTL000499'
-    #for mat in mat2Items:
-    print("%s -> %s #=%d" % (mat, mat2Items[mat][-1], len(mat2Items[mat])))
+    for item in mat2Items[mat]:
+        print(item)
+        #print("%s -> %s #=%d" % (mat, mat2Items[mat][-1], len(mat2Items[mat])))
         # producer is too early if
         # 1. sum > amount
         # 2. date < due_date
