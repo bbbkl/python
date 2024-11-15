@@ -42,7 +42,7 @@ from message.m_ressgruppe import MRessGruppe
 from message.m_uebort import M_UebOrt
 from message.m_uebadresse import M_UebAdresse
 from message.reason import ReasonMaterial, ReasonResource, ReasonResRes, ReasonTimebound, ReasonStructure, ReasonAdmin, ReasonHead, Reason, ReasonAct
-from message.listener import APSCommandackSolutionCtpProd, JobContext, JobContextCtp, JobContextCtpProd, NoSolutionPPA, ContTimePoint
+from message.listener import APSCommandackSolutionCtpProd, APSCommandackSolution, APSCommandackSolutionResult, JobContext, JobContextCtp, JobContextCtpProd, NoSolutionPPA, ContTimePoint
 from message.schedulinginfo import SchedulingInfo, SchedulingTrigger
 from message.sending_queue import DelSimulationMode, RollbackSimulationMode
 from message.setup_matrix import SetupMatrix, SetupMatrixEntry, SetupPartFeature, SetupResourceFeature, SetupMatrixDefinition
@@ -145,10 +145,11 @@ def add_counter(filename, encoding_id):
     os.remove(filename)
     os.rename(tmp_file, filename)
 
-def strip_message_file(filename, process_ids, regex_filter, describe_cmd, inverse_flag, encoding_id):
+
+def strip_message_file(filename, process_ids, regex_filter, describe_cmd, inverse_flag, encoding_id, output_suffix='stripped'):
     """open file, read each line and rewrite it to message file only special processes"""
 
-    result_file = get_output_file(filename, "stripped")
+    result_file = get_output_file(filename, output_suffix)
     output = open(result_file, "w", encoding=encoding_id)
 
     skip_flag = True
@@ -319,6 +320,37 @@ def grep_proc_ids(filename, res_ids, encoding_id):
     result.extend(ids)
     return result
 
+
+def grep_all_proc_ids(filename, encoding_id):
+    """get all contained process ids until end of optimization is reached"""
+    result = []
+    data = None
+    prev_process = None
+    for line in open(filename, encoding=encoding_id):
+        line_type, tokens = parse_line(line)
+        command = Command(tokens)
+        if line_type == ID_COMMAND and command.cmd_id() == 370:  # 370 DEF_ERPCommandcreate_Process______
+            command = Command(tokens)
+            if end_of_optimization(command):
+                break
+            if data is not None:
+                process_id = create_object(data, command).process_id()
+                if prev_process != process_id and not process_id in result:
+                    result.append(process_id)
+                    prev_process = process_id
+            data = None
+        elif line_type == ID_DATA:
+            data = tokens
+    return result
+
+
+def split_up(filename, items, num_splits, encoding_id):
+    """split given messagefile in n=num_splits parts, name_<nn>.dat"""
+    num_splits = min(num_splits, len(items))
+    for nth in range(num_splits):
+        suffix = "%02d" % nth
+        strip_message_file(filename, items[nth::num_splits], '', False, False, encoding_id, suffix)
+
 def read_message_file(filename, encoding_id):
     """open file, read each line and create appropriate object"""
     items = []
@@ -367,7 +399,8 @@ def get_id_to_class_mapping():
                    ML_ArtOrt, ML_ArtOrtVar, M_UebOrt, M_UebAdresse, CheckErpID, TrStock, TrSafetyStock, TrStockFromMLArtOrtKomm,
                    ReasonMaterial, ReasonResource, ReasonResRes, ReasonTimebound, ReasonStructure, ReasonAdmin,
                    ReasonHead, Reason, ReasonAct,
-                   APSCommandackSolutionCtpProd, JobContext, JobContextCtp, JobContextCtpProd,
+                   APSCommandackSolutionCtpProd, APSCommandackSolution, APSCommandackSolutionResult,
+                   JobContext, JobContextCtp, JobContextCtpProd,
                    DelSimulationMode, RollbackSimulationMode,
                    SetupMatrix, SetupMatrixEntry, SetupPartFeature, SetupResourceFeature, SetupMatrixDefinition,
                    CreateContTimePoint, CreateZeitMengenEinheit, SetDatabaseTime, MarkForGetSolCtpProd, GetSolutionCtpProd, GetSolutionCtp, SetConfigParam, UpdateActivity, UpdateResource,
@@ -538,6 +571,9 @@ def parse_arguments():
     parser.add_argument('-n', '--with_index_numbers', action="store_true", # or stare_false
                       dest="with_index_numbers", default=False, # negative store value
                       help="at index position to each explained field")
+    parser.add_argument('-su', '--split_up', type=int,
+                        dest="split_up", default=0,  # negative store value
+                        help="split up messagefile in n parts")
     return parser.parse_args()
 
 def main():
@@ -555,6 +591,11 @@ def main():
 
     if args.explain:
         explain_message_file(args.message_file, args.with_index_numbers, encoding)
+        return 0
+
+    if args.split_up > 0:
+        proc_ids = grep_all_proc_ids(args.message_file, encoding)
+        split_up(args.message_file, proc_ids, args.split_up, encoding)
         return 0
 
     if args.regex_filter != '':

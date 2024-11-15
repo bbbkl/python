@@ -14,8 +14,11 @@ def get_proc_ids(filename, stop_id):
     result = []
     #rgx_proc_id = re.compile(r"begin SolGoalSchedulePrioI::execute scheduling process: p\d+ ([\S]+) ")
     #   1    1 process LA-01315264          dispolevel: 3  pr
-    rgx_proc_id = re.compile(r"^\s*\d+\s+\d+\s+process\s+(\S+)\s+dispolevel")
+    #rgx_proc_id = re.compile(r"^\s*\d+\s+\d+\s+process\s+(\S+)\s+(dispolevel")
     # rgx_proc_id = re.compile(r"^\s*(\d+)\s+(\d+)\s+process\s+(\S+)\s+dispolevel")
+
+    # 1274 1274 process=PPA/LA-00001268      dpl=0  prio=0.100000 age=0  duedate=19.10.2022 ordernum=  1339 id=11508 part=0|3305-00098-01||||12000       P
+    rgx_proc_id = re.compile(r"^\s*\d+\s+\d+\s+process=[A-Z]+/(\S+)")
     for line in open(filename):
         # ... begin SolGoalSchedulePrioI::execute scheduling process: p102571 LA-14005165 0 ...
         hit = rgx_proc_id.search(line)

@@ -147,7 +147,7 @@ class MA:
         return 'unknown'
 
     def get_remote_type(self):
-        if self.tokens[self.get_idx('Homeoffice')].lower() == 'ja': return 'homeoffice'
+        if self.tokens[self.get_idx('Homeoffice')].lower() in ['ja', '1']: return 'homeoffice'
         if self.tokens[self.get_idx('Remoteoffice-Erklärung NEU unterzeichnet')].lower() == 'ja': return 'remoteoffice'
         return "nix"
 
@@ -271,11 +271,52 @@ def report_passiv(items):
                item.get_street(), item.get_plz(), item.get_city()))
 
 
-def report_items(items, want_male):
+def report_items(items, want_male, with_index=True):
     print('Nr.;Familienname;Vorname;Organisationseinheit')
     for idx, item in enumerate(filter(lambda x: x.is_male()==want_male, items)):
         name = item.nachname() if item.is_selectable() else item.nachname() + ' *1'
-        print('%d;%s;%s;%s' % (idx+1, name, item.vorname(), item.section() + item.get_comment()))
+        detail = item.section() + item.get_comment()
+        line = '%s;%s;%s' % (name, item.vorname(), detail)
+        if with_index:
+            line = '%d;%s' % (idx+1, line)
+        print(line)
+
+def report_letter_info(items):
+    print('Geschlecht;Vorname;Nachname;Adresszusatz;Straße mit Hausnummer;PLZ;Ort')
+    #items = filter(lambda x: not(x.get_standort() == 'Weilerbach' and x.get_remote_type()=='nix'), items)
+    for item in items:
+        line = "M" if item.is_male() else "W"
+        line += ';' + item.vorname()
+        line += ';' + item.nachname()
+        line += ';' + item.get_address_addon()
+        line += ';' + item.get_street()
+        line += ';"%s"' % item.get_plz()
+        line += ';' + item.get_city()
+        print(line)
+
+def report_presence_emails(items):
+    msg = ''
+    badies = []
+    items = filter(lambda x: (x.get_standort() == 'Weilerbach' and x.get_remote_type()=='nix'), items)
+    cnt = 0
+    for item in items:
+        prename = item.vorname().replace('Felix Benjamin', 'felixbenjamin').replace('Lisa Marie', 'lisa-marie')
+        name = '%s.%s' % (prename, item.nachname())
+        name = name.strip()
+        name = name.lower().replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue').replace('ß', 'ss')
+        if not re.search('\s', name):
+            cnt += 1
+            if msg: msg += ';'
+            msg += name + '@proalpha.com'
+        else:
+            badies.append(name)
+        if cnt % 5 == 0:
+            print(msg + '\n')
+            msg = ''
+    print(msg)
+    print()
+    if badies: print(badies)
+
 
 def main():
     """main function"""
@@ -301,14 +342,18 @@ def main():
     #items = filter(lambda x: x.has_procura() or x.is_la(), items)
     #items = filter(lambda x: x.get_status()=='Passiv', items)
     #items = filter(lambda x: x.section().find('Team') != -1, items)
+    #items = filter(lambda x: x.get_standort().find('Nashua') > -1 or x.get_standort().find('Taicang') > -1, items)
 
     #report_status(items)
     #report_passiv(items)
     #for item in items: print(item)
     #return 0
 
-    #report_items(items, False) # female
-    report_items(items, True) # male
+    with_index = True
+    #report_items(items, False, with_index) # female
+    report_items(items, True, with_index) # male
+    #report_letter_info(items)
+    #report_presence_emails(items)
 
     if 0:
         cnt_total = cnt_male = 0

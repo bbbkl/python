@@ -10,7 +10,7 @@ from message.baseitem import BaseItem
 #from to_string import ToString
 
 class APSCommandackSolutionCtpProd(BaseItem):
-    """One material reason"""
+    """ctp is ready"""
     def __init__(self, tokens, command):
         BaseItem.__init__(self, tokens, command)
 
@@ -24,6 +24,39 @@ class APSCommandackSolutionCtpProd(BaseItem):
 
     def token_descriptions(self):
         return ['process_area_head', 'process', 'solution_found', 'is_frozen_done', ]
+
+class APSCommandackSolution(BaseItem):
+    """acknowledge solution is send"""
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+
+    def headline_ids(self):
+        """get headline for explained mode"""
+        return "%s" % self._command.text()
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_APSCommandackSolution_________',]
+
+    def token_descriptions(self):
+        return ['transmission_already_started', 'job_id', ]
+
+
+class APSCommandackSolutionResult(BaseItem):
+    """acknowledge solution result is send"""
+    def __init__(self, tokens, command):
+        BaseItem.__init__(self, tokens, command)
+
+    def headline_ids(self):
+        """get headline for explained mode"""
+        return "%s" % self._command.text()
+
+    @classmethod
+    def commands(cls):
+        return ['DEF_APSCommandackSolutionResult___',]
+
+    def token_descriptions(self):
+        return ['job_id', ]
 
 
 class JobContextCtp(BaseItem):

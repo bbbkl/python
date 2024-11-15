@@ -130,7 +130,6 @@
 //  Create Table Objects
 // ------------------------------------------------------------------------------
 #define DEF_ERPCommandcreate_ApsTrMRPMovem  301 //!< used to receive denoted data type
-//#define DEF_ERPCommandcreate_M_DispoBew___  301999 //!< deprecated name
 //#define DEF_ERPCommandcreate_M_GewDurch___  302
 //#define DEF_ERPCommandcreate_M_GewKap_____  303
 //#define DEF_ERPCommandcreate_M_GewTermin__  304
@@ -180,8 +179,8 @@
 #define DEF_ERPCommandcreate_Overload_Res_  375 //!< used to receive denoted data type (used overload information about resources)
 #define DEF_ERPCommandcreate_Overload_Mat_  380 //!< used to receive denoted data type (used overload information about depots)
 #define DEF_ERPCommandcreate_ProcessCst___  381 //!< used to receive denoted data type (constraint from one process to activity in other process)
-#define DEF_ERPCommandcreate_Coverage_____  382 //!< used to receive denoted data type (coverages for a given process)
-          // same as create_ProcessProd__
+#define DEF_ERPCommandcreate_Coverage_____  382 //!< used to receive denoted data type (coverages for a given process); was cmd create_ProcessProd__
+#define DEF_ERPCommandcreate_EmplPool_____  383 //!< used to receive denoted data type (employee pool)
 
 #define DEF_ERPCommandSetDatabaseTime_____  385 //!< receive denoted timestamp for time axis origin ("now" is 0 here)
 
@@ -281,6 +280,7 @@
 #define DEF_APSCommandOfflineTest_________  899 //!< for testing communication, testRunner is invoked and messages send to erp as dummy
 
 #define DEF_ERPCommandGetLogFile__________  900 //!< command to send the logfile currently holding to the erp
+#define DEF_ERPCommandGetLogFileComplete__  901 //!< signal to the erp that the transmission of the logfile is complete
 
 #define DEF_ERPCommandSimulateOptimization  910
 
@@ -294,4 +294,4 @@
 
 // APS server commands are defined in ApsStatus.h
 
-std::string commandToString(long p_lCommand);
+std::string commandToString(int p_lCommand);

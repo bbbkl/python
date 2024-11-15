@@ -143,6 +143,8 @@ class SetupRes:
             for line in lines[1:]:
                 if line.find('setup_spacer') != -1:
                     continue
+                if line.find('FREE') != -1:
+                    continue
                 tokens = line.split(';')
                 if len(tokens) and tokens[0]:
                     items.append(SetupItem(tokens, self.col_lookup))

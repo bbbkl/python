@@ -11,9 +11,32 @@ from argparse import ArgumentParser
 # import os.path
 # import shutil
 import os
+from collections import Counter
 
 
 VERSION = '0.1'
+
+class DisRes():
+    def __init__(self, id_val, category, name, cal_std):
+        self._id = id_val
+        self._category = category
+        self._name = name
+        self._cal_std = cal_std
+
+    def __str__(self):
+        return "%s name=%s/%s cal=%s" % (self._id, self._category, self._name, self._cal_std)
+
+    def get_category(self):
+        return self._category
+
+    def get_name(self):
+        return self._name
+
+    def get_id(self):
+        return self._id
+
+    def get_cal_id(self):
+        return self._cal_std
 
 class Cal():
     def __init__(self, id_val, name):
@@ -42,7 +65,7 @@ class Cal():
         for idx, item in enumerate(self._elems):
             if item in other_elems:
                 equal_cnt += 1
-        return equal_cnt >= (0.90 * len(self._elems))
+        return equal_cnt >= (0.8 * len(self._elems))
 
 class PoolRes():
     def __init__(self, id_val, name, members, prios):
@@ -95,6 +118,17 @@ def get_calendars(filename):
                     cal = None
     return calendars
 
+def get_resources(filename):
+    # <discrete_resource id="r93" name="1	250201" calendar_std="c93" calendar_ovl="c93_ovl" ignoreCalConstraints="1" />
+    rgx_res = re.compile(r'<discrete_resource id="([^"]+)" name="([^"]+)\t([^"]+)" calendar_std="([^"]+)"')
+    result = []
+    with open(filename, "r") as istream:
+        for line in istream:
+            hit = rgx_res.search(line)
+            if hit:
+                id_val, category, name, cal = hit.groups()
+                result.append(DisRes(id_val, category, name, cal))
+    return result
 
 def get_pools(filename):
     rgx_pool = re.compile(r'<altDisResSet id="([^"]*)"\s+name="([^"]*)"\s+disResIDs="([^"]*)"\s+priorities="([^"]*)"')
@@ -142,6 +176,16 @@ def check_calendars(filename):
     for item in pools:
         print(item)
 
+def check_res(filename):
+    resources = get_resources(filename)
+    res_man = filter(lambda x: x.get_category()=="2", resources)
+    equiv_classes = {}
+    for item in res_man:
+        equiv_classes.setdefault(item.get_cal_id(), [])
+        equiv_classes[item.get_cal_id()].append(item.get_id())
+    for cal in sorted(equiv_classes):
+        print("cal=%s #=%d (%s)" % (cal, len(equiv_classes[cal]), sorted(equiv_classes[cal])))
+
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -155,6 +199,9 @@ def main():
     """main function"""
     args = parse_arguments()
     check_calendars(args.inputfile)
+
+    print(20 * "=")
+    check_res(args.inputfile)
     
 if __name__ == "__main__":
     try:
