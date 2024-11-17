@@ -14,7 +14,27 @@ import re
 import sys
 import operator
 import os.path
+from glob import glob
+from collections import Counter
+from datetime import datetime
 from argparse import ArgumentParser
+
+def get_datetime(tp_as_string):
+    # format 2022-10-27 14:59:00
+    try:
+        if re.match(r'\d{2}.\d{2}.\d{4}', tp_as_string):
+            return datetime.strptime(tp_as_string, '%d.%m.%Y')
+
+        return datetime.strptime(tp_as_string, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        return None
+
+def dt2str(dt_obj, date_only=True):
+    if dt_obj is None:
+        return 10 * ' ' if date_only else 16 * ' '
+    if date_only:
+        return dt_obj.strftime('%Y-%m-%d')
+    return dt_obj.strftime('%Y-%m-%d %H:%M')
 
 class BaseData(object):
     """Base item which holds tokens and command"""
@@ -311,13 +331,17 @@ class Activity(BaseData):
     def has_reservation(self):
         return self.server_date() != self.mat_reservation_date() and self.mat_reservation_date() != ''
     def timebound(self):
-        return self._tokens[17]
+        return get_datetime(self._tokens[17])
     def has_timebound(self):
         return self._tokens[18] == '3' and cmp_date(self.server_date(), self.timebound()) == -1
     def has_duedate(self):
         return len(self._tokens) > 43 and self._tokens[43] != '?'
     def duedate(self):
-        return self._tokens[43]
+        return get_datetime(self._tokens[43])
+    def start_date(self):
+        return get_datetime(self._tokens[14])
+    def end_date(self):
+        return get_datetime(self._tokens[15])
     def __str__(self):
         #return "\t".join(self._tokens)
         reservation = " reservation=" + self.mat_reservation_date() if self.has_reservation() else ""
@@ -388,6 +412,10 @@ class PartProcess(BaseData):
         if self._tokens[5] == '0':
             return '' 
         return self._tokens[5]
+    def prio(self):
+        return float(self._tokens[10].replace(',', '.'))
+    def age(self):
+        return int(self._tokens[29])
     def free_quantity(self):
         return float(self._tokens[17].replace(',', '.'))
     def use_duedate(self):
@@ -401,7 +429,7 @@ class PartProcess(BaseData):
             mat += "/%s" % self._tokens[15]
         return mat
     def duedate(self):
-        return self._tokens[8]
+        return get_datetime(self._tokens[8])
     def material_key(self):
         return "%s|%s|%s|%s|%s" % (self.mrp_area(), self.part(), self.part_var(), self.lot(), self.cro())
     
@@ -443,12 +471,31 @@ class Process:
         return self._id
     def head_partproc(self):
         return self._partprocs[self._head_ppid]
+    def prio(self):
+        return self.head_partproc().prio()
+    def age(self):
+        return self.head_partproc().age()
+    def part(self):
+        return self.head_partproc().part()
     def duedate(self):
         return self.head_partproc().duedate()
     def material(self):
         return self.head_partproc().material()
     def quantity(self):
         return self.head_partproc().free_quantity()
+    def tp_end(self):
+        """last tp of all acts of head partproc"""
+        tp = None
+        for act in filter(lambda x: x.partproc()==self._head_ppid, self._activities.values()):
+            if tp is None or tp < act.end_date():
+                tp = act.end_date()
+        return tp
+    def tp_start(self):
+        tp = None
+        for act in self._activities.values():
+            if tp is None or tp > act.start_date():
+                tp = act.start_date()
+        return tp
     
     def add_partproc(self, partproc):
         self._partprocs[partproc.partproc_id()] = partproc
@@ -806,6 +853,48 @@ def show_pool_selections(message_file):
             print()
         #sys.exit(0)
 
+def get_messagefiles(base_item):
+    if os.path.isfile(base_item):
+        return [base_item,]
+    return glob(base_item + '/*.dat')
+
+def do_report(base_item):
+    procs_history = {}
+    for msg_file in get_messagefiles(base_item):
+        print("handle %s" % msg_file)
+        items = parse_messagefile(msg_file, [PartProcess, Activity])
+        procs = build_procs(items)
+        for proc in filter(lambda x: not x.is_temp(), procs.values()):
+            pid = proc.proc_id()
+            procs_history.setdefault(pid, [])
+            procs_history[pid].append(proc)
+    jump2process = {}
+    jumpCnt = Counter()
+    for pid in procs_history:
+        history = procs_history[pid]
+        delta = max(map(lambda x: x.tp_end(), history)) - min(map(lambda x: x.tp_end(), history))
+        jump = delta.days
+        jumpCnt[jump] += 1
+        jump2process.setdefault(jump, [])
+        jump2process[jump].append(pid)
+
+    for jump in reversed(sorted(jumpCnt.keys())):
+        print("jump=%d #=%d" % (jump, jumpCnt[jump]))
+
+    for jump in reversed(sorted(jump2process.keys())):
+        for pid in jump2process[jump]:
+            history = procs_history[pid]
+            delta = max(map(lambda x: x.tp_end(), history)) - min(map(lambda x: x.tp_end(), history))
+            diff = delta.days
+            print("%s part=%s jump=%d" % (pid, history[0].part(), diff))
+            for proc in history:
+                tp_start = proc.tp_start()
+                tp_end = proc.tp_end()
+                print("\tdd=%s prio=%.1f age=%d start=%s end=%s" %
+                  (dt2str(proc.duedate()), proc.prio(), proc.age(),
+                   dt2str(tp_start), dt2str(tp_end)))
+            print()
+
 def parse_arguments():
     """parse arguments from command line"""
     #usage = "usage: %(prog)s [options] <message file>" + DESCRIPTION
@@ -835,10 +924,13 @@ def main():
     args = parse_arguments()
     msg_file = args.message_file
  
- 
+
+    do_report(msg_file)
+    return
+
     #check_altsres(msg_file)
 
-    if 1:
+    if 0:
         show_pool_selections(msg_file)
         return
 
