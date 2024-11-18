@@ -440,9 +440,10 @@ class PartProcess(BaseData):
 class Process:
     server_start = None
     
-    def __init__(self, proc_id):
+    def __init__(self, proc_id, msg_id=''):
         self._head_ppid = None #head_partproc.partproc_id()
         self._id = proc_id
+        self._msg_id = msg_id
         self._area =  None #head_partproc.proc_area()
         self._partprocs = {} #self._head_ppid : head_partproc}
         self._activities = {}
@@ -469,6 +470,8 @@ class Process:
         return self._area
     def proc_id(self):
         return self._id
+    def msg_id(self):
+        return self._msg_id
     def head_partproc(self):
         return self._partprocs[self._head_ppid]
     def prio(self):
@@ -542,7 +545,7 @@ class SchedulingTrigger:
     def cover_id(self):
         return self._tokens[4]
 
-def build_procs(items):
+def build_procs(items, msg_id = ''):
     procs = {}
     partprocs = filter(lambda x: isinstance(x, PartProcess), items)
     activities = filter(lambda x: isinstance(x, Activity), items)
@@ -553,7 +556,7 @@ def build_procs(items):
         Process.set_server_date(server_info.sever_date())
     for partproc in partprocs:
         proc_id = partproc.proc_id()
-        procs.setdefault(proc_id, Process(proc_id))
+        procs.setdefault(proc_id, Process(proc_id, msg_id))
         procs[proc_id].add_partproc(partproc)
     for act in activities:
         proc_id = act.proc_id()
@@ -853,17 +856,35 @@ def show_pool_selections(message_file):
             print()
         #sys.exit(0)
 
+
+def get_msg_id(messagefile):
+    name = os.path.basename(messagefile)
+    hit = re.search(r'_(\d{8}_\d{4})', name)
+    if hit:
+        return hit.group(1)
+    return name
+
 def get_messagefiles(base_item):
     if os.path.isfile(base_item):
         return [base_item,]
     return glob(base_item + '/*.dat')
+
+def count_jumps(processes, jump_dist = 14):
+    if len(processes) < 2:
+        return 0
+    cnt = 0
+    for idx in range(1, len(processes)):
+        diff = processes[idx-1].tp_end() - processes[idx].tp_end()
+        if abs(diff.days) > jump_dist:
+            cnt += 1
+    return cnt
 
 def do_report(base_item):
     procs_history = {}
     for msg_file in get_messagefiles(base_item):
         print("handle %s" % msg_file)
         items = parse_messagefile(msg_file, [PartProcess, Activity])
-        procs = build_procs(items)
+        procs = build_procs(items, get_msg_id(msg_file))
         for proc in filter(lambda x: not x.is_temp(), procs.values()):
             pid = proc.proc_id()
             procs_history.setdefault(pid, [])
@@ -881,17 +902,24 @@ def do_report(base_item):
     for jump in reversed(sorted(jumpCnt.keys())):
         print("jump=%d #=%d" % (jump, jumpCnt[jump]))
 
+    last_msg_id = get_msg_id(get_messagefiles(base_item)[-1])
+
     for jump in reversed(sorted(jump2process.keys())):
         for pid in jump2process[jump]:
             history = procs_history[pid]
+            jump_cnt = count_jumps(history)
+            has_finished = history[-1].msg_id() != last_msg_id
             delta = max(map(lambda x: x.tp_end(), history)) - min(map(lambda x: x.tp_end(), history))
             diff = delta.days
-            print("%s part=%s jump=%d" % (pid, history[0].part(), diff))
+            msg = "%s part=%s #jumps=%d jump=%d" % (pid, history[0].part(), jump_cnt, diff)
+            if has_finished:
+                msg += ' *finished*'
+            print(msg)
             for proc in history:
                 tp_start = proc.tp_start()
                 tp_end = proc.tp_end()
-                print("\tdd=%s prio=%.1f age=%d start=%s end=%s" %
-                  (dt2str(proc.duedate()), proc.prio(), proc.age(),
+                print("\tmsg=%s dd=%s prio=%.1f age=%d start=%s end=%s" %
+                  (proc.msg_id(), dt2str(proc.duedate()), proc.prio(), proc.age(),
                    dt2str(tp_start), dt2str(tp_end)))
             print()
 
